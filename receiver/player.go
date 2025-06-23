@@ -1,4 +1,4 @@
-package main
+package receiver
 
 import (
 	"github.com/anthdm/hollywood/actor"
@@ -19,4 +19,16 @@ func NewPlayer(physicsPID, rendererPID *actor.PID) actor.Producer {
 			},
 		}
 	}
+}
+
+func (p *Player) Receive(c *actor.Context) {
+	switch msg := c.Message().(type) {
+	case InputPlayerMovement:
+		c.Send(p.physicsPID, EventEntityUpdate{
+			PID:      c.PID(),
+			Velocity: msg.Velocity,
+		})
+	}
+
+	p.Entity.Receive(c)
 }

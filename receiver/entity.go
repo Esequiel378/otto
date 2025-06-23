@@ -1,4 +1,4 @@
-package main
+package receiver
 
 import (
 	"github.com/anthdm/hollywood/actor"
@@ -49,11 +49,6 @@ func (e *Entity) Receive(c *actor.Context) {
 				Scale:    e.scale,
 				Rotation: e.rotation,
 			},
-		})
-	case Tick:
-		c.Send(e.physicsPID, EventEntityUpdate{
-			PID:      c.PID(),
-			Velocity: e.velocity,
 		})
 	}
 }

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"log"
+	"otto/receiver"
 	"runtime"
 	"time"
 
@@ -19,38 +19,49 @@ func main() {
 		log.Fatalf("failed to create actor engine: %v", err)
 	}
 
-	rendererPID := e.Spawn(NewRender(), "renderer")
-	physicsPID := e.Spawn(NewPhysics(), "physics")
+	rendererPID := e.Spawn(receiver.NewRender(), "renderer")
+	physicsPID := e.Spawn(receiver.NewPhysics(), "physics")
 
-	e.Spawn(NewPlayer(physicsPID, rendererPID), "player")
+	e.Spawn(receiver.NewPlayer(physicsPID, rendererPID), "player")
 
 	window, err := NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {
 		log.Fatalf("failed to create window: %v", err)
 	}
 
+	tickRate := 64
+	tickInterval := time.Second / time.Duration(tickRate)
+	latestTick := time.Now()
+
+	// TODO: Add cancelation context
 	go func() {
-		for {
-			e.BroadcastEvent(Tick{deltaTime: 1})
-			time.Sleep(1 * time.Second)
+		ticker := time.NewTicker(tickInterval)
+		defer ticker.Stop()
+
+		// The broadcast overhead makes this a bit less accurate than the tick rate, but it's good enough for now.
+		for range ticker.C {
+			now := time.Now()
+			deltaTime := now.Sub(latestTick).Seconds()
+			latestTick = now
+			e.BroadcastEvent(receiver.Tick{DeltaTime: deltaTime})
 		}
 	}()
 
 	window.Run(func(deltaTime float64) {
-		resp := e.Request(rendererPID, RequestEntities{}, 10*time.Millisecond)
+		resp := e.Request(rendererPID, receiver.RequestEntities{}, 10*time.Millisecond)
 
 		res, err := resp.Result()
 		if err != nil {
 			log.Fatalf("failed to request entities: %v", err)
 		}
 
-		entities, ok := res.(EntitiesResponse)
+		entities, ok := res.(receiver.EntitiesResponse)
 		if !ok {
 			log.Fatalf("failed to cast entities response: %v", res)
 		}
 
 		for pid, entity := range entities.Entities {
-			fmt.Printf("Entity %v: %v\n", pid, entity)
+			_, _ = pid, entity
 		}
 	})
 }

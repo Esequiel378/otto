@@ -1,4 +1,4 @@
-package main
+package receiver
 
 import (
 	"github.com/anthdm/hollywood/actor"
@@ -6,12 +6,7 @@ import (
 )
 
 type Tick struct {
-	deltaTime float64
-}
-
-type Collider struct {
-	entity   *actor.PID
-	position mgl64.Vec3
+	DeltaTime float64
 }
 
 type RequestEntities struct{}
@@ -40,4 +35,8 @@ type EventEntityRenderUpdate struct {
 type EventEntityTransform struct {
 	PID      *actor.PID
 	Position mgl64.Vec3
+}
+
+type InputPlayerMovement struct {
+	Velocity mgl64.Vec3
 }
