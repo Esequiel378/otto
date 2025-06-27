@@ -49,8 +49,11 @@ func (p *Physics) ApplyForce(c *actor.Context, pid *actor.PID, force mgl64.Vec3)
 		return
 	}
 	entity.Velocity = entity.Velocity.Add(force)
+	entity.Position = entity.Position.Add(entity.Velocity)
+	p.entities[pid] = entity
+
 	c.Send(pid, EventEntityTransform{
 		PID:      pid,
-		Position: entity.Position.Add(entity.Velocity),
+		Position: entity.Position,
 	})
 }

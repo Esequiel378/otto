@@ -2,11 +2,13 @@ package main
 
 import (
 	"log"
+	"otto/manager"
 	"otto/receiver"
 	"runtime"
 	"time"
 
 	"github.com/anthdm/hollywood/actor"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 func init() {
@@ -22,12 +24,27 @@ func main() {
 	rendererPID := e.Spawn(receiver.NewRender(), "renderer")
 	physicsPID := e.Spawn(receiver.NewPhysics(), "physics")
 
-	e.Spawn(receiver.NewPlayer(physicsPID, rendererPID), "player")
+	playerPID := e.Spawn(receiver.NewPlayer(physicsPID, rendererPID), "player")
 
 	window, err := NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {
 		log.Fatalf("failed to create window: %v", err)
 	}
+
+	// Initialize shader manager after OpenGL context is created
+	shaderManager := manager.NewShaderManager()
+	if err := shaderManager.Init("./assets/shaders"); err != nil {
+		log.Fatalf("failed to initialize shader manager: %v", err)
+	}
+	defer shaderManager.Cleanup()
+
+	// Initialize model manager
+	modelManager := manager.NewModelManager()
+	if err := modelManager.Init("./assets/models", "./assets/textures"); err != nil {
+		log.Printf("Warning: failed to initialize model manager: %v", err)
+		// Continue without models for now
+	}
+	defer modelManager.Cleanup()
 
 	tickRate := 64
 	tickInterval := time.Second / time.Duration(tickRate)
@@ -48,20 +65,31 @@ func main() {
 	}()
 
 	window.Run(func(deltaTime float64) {
+		// Handle input
+		input := receiver.InputPlayerMovement{}
+		input.Handle()
+		if input.Velocity != (mgl64.Vec3{}) {
+			e.Send(playerPID, input)
+		}
+
+		// Request entities from renderer
 		resp := e.Request(rendererPID, receiver.RequestEntities{}, 10*time.Millisecond)
 
 		res, err := resp.Result()
 		if err != nil {
-			log.Fatalf("failed to request entities: %v", err)
+			log.Printf("failed to request entities: %v", err)
+			return
 		}
 
 		entities, ok := res.(receiver.EntitiesResponse)
 		if !ok {
-			log.Fatalf("failed to cast entities response: %v", res)
+			log.Printf("failed to cast entities response: %v", res)
+			return
 		}
 
-		for pid, entity := range entities.Entities {
-			_, _ = pid, entity
+		// Render entities using OpenGL
+		for _, entity := range entities.Entities {
+			RenderEntity(shaderManager, modelManager, &entity)
 		}
 	})
 }

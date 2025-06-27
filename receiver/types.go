@@ -15,10 +15,11 @@ type EntitiesResponse struct {
 }
 
 type EntityRigidBody struct {
-	Position mgl64.Vec3
-	Velocity mgl64.Vec3
-	Scale    mgl64.Vec3
-	Rotation mgl64.Vec3
+	Position  mgl64.Vec3
+	Velocity  mgl64.Vec3
+	Scale     mgl64.Vec3
+	Rotation  mgl64.Vec3
+	ModelName string
 }
 type EventEntityInitialized struct {
 	PID             *actor.PID
