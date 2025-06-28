@@ -39,17 +39,21 @@ func (p *Physics) Receive(c *actor.Context) {
 
 func (p *Physics) Update(c *actor.Context) {
 	for pid, entity := range p.entities {
-		p.ApplyForce(c, pid, entity.Velocity)
+		p.UpdatePosition(c, pid, entity)
 	}
 }
 
-func (p *Physics) ApplyForce(c *actor.Context, pid *actor.PID, force mgl64.Vec3) {
-	entity, ok := p.entities[pid]
-	if !ok {
-		return
+func (p *Physics) UpdatePosition(c *actor.Context, pid *actor.PID, entity EntityRigidBody) {
+	// Apply velocity to position with a fixed movement speed
+	movementSpeed := 0.1 // Fixed movement speed per frame
+	entity.Position = entity.Position.Add(entity.Velocity.Mul(movementSpeed))
+
+	// Don't apply damping when there's active input - let the input system control velocity
+	// Only apply damping when there's no input (velocity will be zero)
+	if entity.Velocity.Len() < 0.01 {
+		entity.Velocity = mgl64.Vec3{}
 	}
-	entity.Velocity = entity.Velocity.Add(force)
-	entity.Position = entity.Position.Add(entity.Velocity)
+
 	p.entities[pid] = entity
 
 	c.Send(pid, EventEntityTransform{

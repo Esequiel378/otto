@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anthdm/hollywood/actor"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 func init() {
@@ -24,7 +23,11 @@ func main() {
 	rendererPID := e.Spawn(receiver.NewRender(), "renderer")
 	physicsPID := e.Spawn(receiver.NewPhysics(), "physics")
 
-	playerPID := e.Spawn(receiver.NewPlayer(physicsPID, rendererPID), "player")
+	// Spawn input actor first since other actors need its PID
+	inputPID := e.Spawn(receiver.NewInputActor(), "input")
+
+	cameraPID := e.Spawn(receiver.NewCamera(inputPID), "camera")
+	e.Spawn(receiver.NewPlayer(physicsPID, rendererPID, inputPID), "player")
 
 	window, err := NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {
@@ -65,11 +68,17 @@ func main() {
 	}()
 
 	window.Run(func(deltaTime float64) {
-		// Handle input
-		input := receiver.InputPlayerMovement{}
-		input.Handle()
-		if input.Velocity != (mgl64.Vec3{}) {
-			e.Send(playerPID, input)
+		// Request camera data
+		cameraResp := e.Request(cameraPID, receiver.RequestCamera{}, 10*time.Millisecond)
+		cameraRes, err := cameraResp.Result()
+		if err != nil {
+			log.Printf("failed to request camera: %v", err)
+			return
+		}
+		camera, ok := cameraRes.(receiver.ResponseCamera)
+		if !ok {
+			log.Printf("failed to cast camera response: %v", cameraRes)
+			return
 		}
 
 		// Request entities from renderer
@@ -89,7 +98,7 @@ func main() {
 
 		// Render entities using OpenGL
 		for _, entity := range entities.Entities {
-			RenderEntity(shaderManager, modelManager, &entity)
+			RenderEntity(shaderManager, modelManager, &entity, &camera.Camera)
 		}
 	})
 }

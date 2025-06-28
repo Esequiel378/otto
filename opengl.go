@@ -16,7 +16,7 @@ func vec64ToVec32(v mgl64.Vec3) mgl32.Vec3 {
 }
 
 // RenderEntity renders an entity using OpenGL 4.1 core profile
-func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.ModelManager, entity *receiver.EntityRigidBody) {
+func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.ModelManager, entity *receiver.EntityRigidBody, camera *receiver.Camera) {
 	shaderProgram, err := shaderManager.Program("camera")
 	if err != nil {
 		log.Printf("Failed to get shader program: %v", err)
@@ -46,8 +46,6 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	scale := vec64ToVec32(entity.Scale)
 	rotation := vec64ToVec32(entity.Rotation)
 
-	log.Printf("Rendering entity at position: %v, scale: %v, rotation: %v", position, scale, rotation)
-
 	// Create model matrix
 	modelMatrix := mgl32.Ident4()
 	modelMatrix = modelMatrix.Mul4(mgl32.Translate3D(position.X(), position.Y(), position.Z()))
@@ -56,15 +54,34 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	modelMatrix = modelMatrix.Mul4(mgl32.HomogRotate3D(rotation.Y(), mgl32.Vec3{0, 1, 0}))
 	modelMatrix = modelMatrix.Mul4(mgl32.HomogRotate3D(rotation.Z(), mgl32.Vec3{0, 0, 1}))
 
-	// Create view matrix (simple camera at origin looking down -Z)
+	// Create view matrix using camera data
+	cameraPos := vec64ToVec32(camera.Position)
 	view := mgl32.LookAtV(
-		mgl32.Vec3{0, 0, 5}, // Camera position
-		mgl32.Vec3{0, 0, 0}, // Look at point
+		cameraPos,           // Camera position
+		mgl32.Vec3{0, 0, 0}, // Look at point (for now, always look at origin)
 		mgl32.Vec3{0, 1, 0}, // Up vector
 	)
 
-	// Create projection matrix
-	projection := mgl32.Perspective(mgl32.DegToRad(45.0), 1200.0/900.0, 0.1, 100.0)
+	// Apply camera rotation (simplified - just apply pitch and yaw)
+	if camera.Rotation[0] != 0 || camera.Rotation[1] != 0 {
+		// Create rotation matrix from camera rotation
+		pitch := float32(camera.Rotation[0])
+		yaw := float32(camera.Rotation[1])
+
+		// Apply rotations to view matrix
+		view = view.Mul4(mgl32.HomogRotate3D(pitch, mgl32.Vec3{1, 0, 0}))
+		view = view.Mul4(mgl32.HomogRotate3D(yaw, mgl32.Vec3{0, 1, 0}))
+	}
+
+	// Create projection matrix with camera zoom
+	fov := float32(45.0 / camera.Zoom) // Zoom affects field of view
+	if fov < 5.0 {
+		fov = 5.0
+	}
+	if fov > 90.0 {
+		fov = 90.0
+	}
+	projection := mgl32.Perspective(mgl32.DegToRad(fov), 1200.0/900.0, 0.1, 100.0)
 
 	// Set uniform matrices
 	gl.UniformMatrix4fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("model\x00")), 1, false, &modelMatrix[0])
@@ -75,7 +92,7 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	gl.Uniform4f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("color\x00")), 1.0, 1.0, 1.0, 1.0)
 
 	// Set view position
-	gl.Uniform3f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("viewPos\x00")), 0.0, 0.0, 5.0)
+	gl.Uniform3f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("viewPos\x00")), cameraPos.X(), cameraPos.Y(), cameraPos.Z())
 
 	// Set ambient strength
 	gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("ambientStrength\x00")), 0.1)

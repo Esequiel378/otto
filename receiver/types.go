@@ -37,7 +37,3 @@ type EventEntityTransform struct {
 	PID      *actor.PID
 	Position mgl64.Vec3
 }
-
-type InputPlayerMovement struct {
-	Velocity mgl64.Vec3
-}
