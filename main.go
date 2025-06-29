@@ -27,7 +27,14 @@ func main() {
 	inputPID := e.Spawn(receiver.NewInputActor(), "input")
 
 	cameraPID := e.Spawn(receiver.NewCamera(inputPID), "camera")
+
+	// Set camera PID in physics system
+	e.Send(physicsPID, receiver.SetCameraPID{PID: cameraPID})
+
 	e.Spawn(receiver.NewPlayer(physicsPID, rendererPID, inputPID), "player")
+
+	// Add a test cube entity for visibility testing
+	e.Spawn(receiver.NewEntity(physicsPID, rendererPID, func() {}), "test_cube")
 
 	window, err := NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {

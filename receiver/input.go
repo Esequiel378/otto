@@ -10,7 +10,8 @@ import (
 
 // InputActor handles input processing during tick events
 type InputActor struct {
-	contexts map[string]manager.InputContext
+	contexts    map[string]manager.InputContext
+	inputStates map[string]bool // Track if each context is currently "pressed"
 }
 
 var _ actor.Receiver = (*InputActor)(nil)
@@ -18,7 +19,8 @@ var _ actor.Receiver = (*InputActor)(nil)
 func NewInputActor() actor.Producer {
 	return func() actor.Receiver {
 		return &InputActor{
-			contexts: make(map[string]manager.InputContext),
+			contexts:    make(map[string]manager.InputContext),
+			inputStates: make(map[string]bool),
 		}
 	}
 }
@@ -64,25 +66,39 @@ func (ia *InputActor) processAllInput(c *actor.Context) {
 		return
 	}
 
-	for _, context := range ia.contexts {
+	for contextType, context := range ia.contexts {
 		// Process the context to get current state
 		hasInput := context.Process()
 
-		// Always broadcast if there's input
-		// For movement contexts, also broadcast when input stops (velocity becomes zero)
-		shouldBroadcast := hasInput
-
-		if movement, ok := context.(*InputPlayerMovement); ok {
-			// For movement, broadcast if there's input OR if velocity is zero (stopping)
-			shouldBroadcast = hasInput || movement.Velocity == (mgl64.Vec3{})
+		// Get previous state
+		wasPressed, exists := ia.inputStates[contextType]
+		if !exists {
+			wasPressed = false
 		}
 
+		// Check if state has changed
+		stateChanged := hasInput != wasPressed
+
+		// For continuous input contexts (like camera), always broadcast when there's input
+		// For discrete input contexts (like movement), only broadcast on state changes
+		shouldBroadcast := stateChanged
+
+		// Special handling for camera input - always broadcast when there's movement
+		if _, ok := context.(*manager.InputCameraControl); ok {
+			camera := context.(*manager.InputCameraControl)
+			shouldBroadcast = hasInput || (camera.Rotation != (mgl64.Vec2{}) || camera.Zoom != 0.0)
+		}
+
+		// Broadcast if needed
 		if shouldBroadcast {
 			event := manager.InputEvent{
 				Context: context,
 			}
 			c.Engine().BroadcastEvent(event)
 		}
+
+		// Update state
+		ia.inputStates[contextType] = hasInput
 	}
 }
 

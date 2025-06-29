@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"math"
 	"otto/manager"
 	"otto/receiver"
 
@@ -56,22 +57,43 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 
 	// Create view matrix using camera data
 	cameraPos := vec64ToVec32(camera.Position)
-	view := mgl32.LookAtV(
-		cameraPos,           // Camera position
-		mgl32.Vec3{0, 0, 0}, // Look at point (for now, always look at origin)
-		mgl32.Vec3{0, 1, 0}, // Up vector
-	)
 
-	// Apply camera rotation (simplified - just apply pitch and yaw)
-	if camera.Rotation[0] != 0 || camera.Rotation[1] != 0 {
-		// Create rotation matrix from camera rotation
-		pitch := float32(camera.Rotation[0])
-		yaw := float32(camera.Rotation[1])
+	// Calculate camera direction based on rotation (first-person camera)
+	pitch := float32(camera.Rotation[0])
+	yaw := float32(camera.Rotation[1])
 
-		// Apply rotations to view matrix
-		view = view.Mul4(mgl32.HomogRotate3D(pitch, mgl32.Vec3{1, 0, 0}))
-		view = view.Mul4(mgl32.HomogRotate3D(yaw, mgl32.Vec3{0, 1, 0}))
+	// Calculate the camera's forward direction
+	cosPitch := float32(math.Cos(float64(pitch)))
+	sinPitch := float32(math.Sin(float64(pitch)))
+	cosYaw := float32(math.Cos(float64(yaw)))
+	sinYaw := float32(math.Sin(float64(yaw)))
+
+	// Forward vector (where the camera is looking)
+	forward := mgl32.Vec3{
+		cosPitch * sinYaw,
+		sinPitch,
+		cosPitch * cosYaw,
 	}
+
+	// Right vector (camera's right direction)
+	right := mgl32.Vec3{
+		cosYaw,
+		0,
+		-sinYaw,
+	}
+
+	// Up vector (camera's up direction)
+	up := right.Cross(forward)
+
+	// Calculate the target point (where camera is looking)
+	target := cameraPos.Add(forward)
+
+	// Create proper view matrix
+	view := mgl32.LookAtV(
+		cameraPos, // Camera position
+		target,    // Look at point (camera position + forward direction)
+		up,        // Up vector
+	)
 
 	// Create projection matrix with camera zoom
 	fov := float32(45.0 / camera.Zoom) // Zoom affects field of view
@@ -95,7 +117,7 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	gl.Uniform3f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("viewPos\x00")), cameraPos.X(), cameraPos.Y(), cameraPos.Z())
 
 	// Set ambient strength
-	gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("ambientStrength\x00")), 0.1)
+	gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("ambientStrength\x00")), 0.3)
 
 	// Set occlusion strength
 	gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("occlusionStrength\x00")), 1.0)
@@ -103,16 +125,16 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	// Set up lighting (single light)
 	gl.Uniform1i(gl.GetUniformLocation(shaderProgram.PID, gl.Str("numLights\x00")), 1)
 
-	// Light position
-	lightPos := mgl32.Vec3{2.0, 2.0, 2.0}
+	// Light position - closer to the scene for better lighting
+	lightPos := mgl32.Vec3{1.0, 1.0, 1.0}
 	gl.Uniform3fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("lightPositions\x00")), 1, &lightPos[0])
 
-	// Light color
+	// Light color - brighter white light
 	lightColor := mgl32.Vec3{1.0, 1.0, 1.0}
 	gl.Uniform3fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("lightColors\x00")), 1, &lightColor[0])
 
-	// Light intensity
-	lightIntensity := float32(1.0)
+	// Light intensity - increased for better visibility
+	lightIntensity := float32(2.0)
 	gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("lightIntensities\x00")), lightIntensity)
 
 	// Check for OpenGL errors
@@ -130,4 +152,7 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 
 	// Unbind VAO
 	gl.BindVertexArray(0)
+
+	// Unuse shader program
+	gl.UseProgram(0)
 }

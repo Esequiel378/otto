@@ -43,11 +43,11 @@ func (p *Player) Receive(c *actor.Context) {
 		// TODO: Subscribe to physics events by sending a message to the physics manager
 		// TODO: Subscribe to renderer events by sending a message to the renderer manager
 	case manager.InputEvent:
-		switch msg.Context.(type) {
+		switch ctx := msg.Context.(type) {
 		case *InputPlayerMovement:
 			c.Send(p.physicsPID, EventEntityUpdate{
 				PID:      c.PID(),
-				Velocity: msg.Context.(*InputPlayerMovement).Velocity,
+				Velocity: ctx.Velocity,
 			})
 		}
 	}
@@ -100,7 +100,8 @@ func (h *InputPlayerMovement) Process() bool {
 		h.Velocity = h.Velocity.Normalize()
 	}
 
-	// Return true if any movement was detected
+	// Return true if any movement key is pressed (for state tracking)
+	// The actual velocity is stored in the context for processing
 	return h.Velocity != (mgl64.Vec3{})
 }
 

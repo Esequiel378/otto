@@ -37,3 +37,11 @@ type EventEntityTransform struct {
 	PID      *actor.PID
 	Position mgl64.Vec3
 }
+
+type SetCameraPID struct {
+	PID *actor.PID
+}
+
+type CameraUpdate struct {
+	Camera Camera
+}

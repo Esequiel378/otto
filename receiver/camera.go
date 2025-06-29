@@ -3,6 +3,8 @@ package receiver
 import (
 	"otto/manager"
 
+	"math"
+
 	"github.com/anthdm/hollywood/actor"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -26,9 +28,9 @@ func NewCamera(inputPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
 		return &CameraActor{
 			camera: Camera{
-				Position: mgl64.Vec3{0, 0, 5}, // Start at origin looking down -Z
-				Rotation: mgl64.Vec2{0, 0},    // No rotation
-				Zoom:     1.0,                 // Default zoom
+				Position: mgl64.Vec3{0, 0, -2}, // Start slightly back from origin
+				Rotation: mgl64.Vec2{0, 0},     // No rotation (looking forward)
+				Zoom:     1.0,                  // Default zoom
 			},
 			inputPID: inputPID,
 		}
@@ -52,6 +54,11 @@ func (ca *CameraActor) Receive(c *actor.Context) {
 	case RequestCamera:
 		// Respond with current camera state
 		c.Respond(ResponseCamera{
+			Camera: ca.camera,
+		})
+	case Tick:
+		// Broadcast camera update on every tick
+		c.Engine().BroadcastEvent(CameraUpdate{
 			Camera: ca.camera,
 		})
 	}
@@ -93,4 +100,41 @@ type RequestCamera struct{}
 // ResponseCamera contains the current camera state
 type ResponseCamera struct {
 	Camera Camera
+}
+
+// GetFrontVector returns the camera's front (forward) direction vector
+func (c *Camera) GetFrontVector() mgl64.Vec3 {
+	pitch := c.Rotation[0]
+	yaw := c.Rotation[1]
+
+	cosPitch := math.Cos(pitch)
+	sinPitch := math.Sin(pitch)
+	cosYaw := math.Cos(yaw)
+	sinYaw := math.Sin(yaw)
+
+	return mgl64.Vec3{
+		cosPitch * sinYaw,
+		sinPitch,
+		cosPitch * cosYaw,
+	}
+}
+
+// GetRightVector returns the camera's right direction vector
+func (c *Camera) GetRightVector() mgl64.Vec3 {
+	yaw := c.Rotation[1]
+	cosYaw := math.Cos(yaw)
+	sinYaw := math.Sin(yaw)
+
+	return mgl64.Vec3{
+		cosYaw,
+		0,
+		-sinYaw,
+	}
+}
+
+// GetUpVector returns the camera's up direction vector
+func (c *Camera) GetUpVector() mgl64.Vec3 {
+	right := c.GetRightVector()
+	front := c.GetFrontVector()
+	return right.Cross(front)
 }

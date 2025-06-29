@@ -18,44 +18,49 @@ func (c *InputCameraControl) GetType() string {
 
 // Process handles camera control input
 func (ic *InputCameraControl) Process() bool {
+	// Reset state at the beginning
+	ic.Rotation = mgl64.Vec2{}
+	ic.Zoom = 0.0
+
 	// Check for camera control keys
 	rotation := mgl64.Vec2{}
 	zoom := 0.0
 
-	// Test with different keys to see if the issue is with specific key constants
-	// Try using arrow keys instead of I/J/K/L
-	upPressed := imgui.IsKeyDown(imgui.KeyUpArrow)
-	downPressed := imgui.IsKeyDown(imgui.KeyDownArrow)
-	leftPressed := imgui.IsKeyDown(imgui.KeyLeftArrow)
-	rightPressed := imgui.IsKeyDown(imgui.KeyRightArrow)
+	// Get mouse input
+	io := imgui.CurrentIO()
+	if io == nil {
+		return false
+	}
 
-	// Also test the original keys
-	iPressed := imgui.IsKeyDown(imgui.KeyI)
-	kPressed := imgui.IsKeyDown(imgui.KeyK)
-	jPressed := imgui.IsKeyDown(imgui.KeyJ)
-	lPressed := imgui.IsKeyDown(imgui.KeyL)
+	// Check if right mouse button is held down for camera rotation
+	rightMouseDown := imgui.IsMouseDown(1) // Right mouse button
+
+	if rightMouseDown {
+		// Get mouse delta for rotation
+		mouseDelta := io.MouseDelta()
+		deltaX := float64(mouseDelta.X)
+		deltaY := float64(mouseDelta.Y)
+
+		// Apply mouse sensitivity
+		sensitivity := 0.1
+		rotation[0] = deltaY * sensitivity // Pitch (Y axis)
+		rotation[1] = deltaX * sensitivity // Yaw (X axis)
+	}
+
+	// Zoom controls with mouse wheel (always process, not just when right mouse is down)
+	mouseWheel := io.MouseWheel()
+	if mouseWheel != 0 {
+		zoom = float64(mouseWheel) * 0.1
+	}
+
+	// Also support keyboard zoom controls as fallback
 	plusPressed := imgui.IsKeyDown(imgui.KeyEqual)
 	minusPressed := imgui.IsKeyDown(imgui.KeyMinus)
 
-	// Rotation controls (try arrow keys first, then I/J/K/L)
-	if upPressed || iPressed {
-		rotation[0] -= 1.0 // Pitch down
-	}
-	if downPressed || kPressed {
-		rotation[0] += 1.0 // Pitch up
-	}
-	if leftPressed || jPressed {
-		rotation[1] -= 1.0 // Yaw left
-	}
-	if rightPressed || lPressed {
-		rotation[1] += 1.0 // Yaw right
-	}
-
-	// Zoom controls (+/- keys)
-	if plusPressed || imgui.IsKeyDown(imgui.KeyKeypadAdd) {
+	if plusPressed {
 		zoom += 1.0 // Zoom in
 	}
-	if minusPressed || imgui.IsKeyDown(imgui.KeyKeypadSubtract) {
+	if minusPressed {
 		zoom -= 1.0 // Zoom out
 	}
 
@@ -63,8 +68,9 @@ func (ic *InputCameraControl) Process() bool {
 	ic.Rotation = rotation
 	ic.Zoom = zoom
 
-	// Return true if any input was detected
-	return rotation != (mgl64.Vec2{}) || zoom != 0.0
+	// Return true if right mouse button is pressed (for state tracking)
+	// The actual rotation/zoom values are stored in the context for processing
+	return rightMouseDown
 }
 
 // InputUIInteraction handles UI-related input
