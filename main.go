@@ -5,7 +5,7 @@ import (
 	"otto/internal/cube"
 	"otto/internal/player"
 	"otto/manager"
-	"otto/receiver"
+	"otto/system"
 	"runtime"
 	"time"
 
@@ -22,10 +22,10 @@ func main() {
 		log.Fatalf("failed to create actor engine: %v", err)
 	}
 
-	inputPID := e.Spawn(receiver.NewInputActor(), "input")
-	cameraPID := e.Spawn(receiver.NewCamera(inputPID), "camera")
-	rendererPID := e.Spawn(receiver.NewRender(), "renderer")
-	physicsPID := e.Spawn(receiver.NewPhysics(cameraPID), "physics")
+	inputPID := e.Spawn(system.NewInputActor(), "input")
+	cameraPID := e.Spawn(system.NewCamera(inputPID), "camera")
+	rendererPID := e.Spawn(system.NewRender(), "renderer")
+	physicsPID := e.Spawn(system.NewPhysics(cameraPID), "physics")
 
 	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
 
@@ -65,26 +65,26 @@ func main() {
 			now := time.Now()
 			deltaTime := now.Sub(latestTick).Seconds()
 			latestTick = now
-			e.BroadcastEvent(receiver.Tick{DeltaTime: deltaTime})
+			e.BroadcastEvent(system.Tick{DeltaTime: deltaTime})
 		}
 	}()
 
 	window.Run(func(deltaTime float64) {
 		// Request camera data
-		cameraResp := e.Request(cameraPID, receiver.RequestCamera{}, 10*time.Millisecond)
+		cameraResp := e.Request(cameraPID, system.RequestCamera{}, 10*time.Millisecond)
 		cameraRes, err := cameraResp.Result()
 		if err != nil {
 			log.Printf("failed to request camera: %v", err)
 			return
 		}
-		camera, ok := cameraRes.(receiver.ResponseCamera)
+		camera, ok := cameraRes.(system.ResponseCamera)
 		if !ok {
 			log.Printf("failed to cast camera response: %v", cameraRes)
 			return
 		}
 
 		// Request entities from renderer
-		resp := e.Request(rendererPID, receiver.RequestEntities{}, 10*time.Millisecond)
+		resp := e.Request(rendererPID, system.RequestEntities{}, 10*time.Millisecond)
 
 		res, err := resp.Result()
 		if err != nil {
@@ -92,7 +92,7 @@ func main() {
 			return
 		}
 
-		entities, ok := res.(receiver.EntitiesResponse)
+		entities, ok := res.(system.EntitiesResponse)
 		if !ok {
 			log.Printf("failed to cast entities response: %v", res)
 			return

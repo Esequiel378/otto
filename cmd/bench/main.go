@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"otto/receiver"
+	"otto/system"
 	"runtime"
 	"sync/atomic"
 	"time"
@@ -31,14 +31,14 @@ func (r *MockRenderer) Receive(c *actor.Context) {
 	switch c.Message().(type) {
 	case actor.Initialized:
 		log.Printf("MockRenderer initialized")
-	case receiver.EventEntityRenderUpdate:
+	case system.EventEntityRenderUpdate:
 		atomic.AddInt64(&r.messageCount, 1)
 		if atomic.LoadInt64(&r.messageCount)%1000 == 0 {
 			log.Printf("Renderer received %d messages", atomic.LoadInt64(&r.messageCount))
 		}
-	case receiver.RequestEntities:
-		c.Respond(receiver.EntitiesResponse{
-			Entities: []receiver.EntityRigidBody{},
+	case system.RequestEntities:
+		c.Respond(system.EntitiesResponse{
+			Entities: []system.EntityRigidBody{},
 		})
 	}
 }
@@ -60,27 +60,27 @@ func (m *MockPhysics) Receive(c *actor.Context) {
 	switch c.Message().(type) {
 	case actor.Initialized:
 		log.Printf("MockPhysics initialized")
-	case receiver.EventEntityUpdate:
+	case system.EventEntityUpdate:
 		atomic.AddInt64(m.messageCount, 1)
 		// Simulate some physics processing
 		time.Sleep(time.Microsecond * 10)
 		if atomic.LoadInt64(m.messageCount)%1000 == 0 {
 			log.Printf("Physics received %d messages", atomic.LoadInt64(m.messageCount))
 		}
-	case receiver.SetCameraPID:
+	case system.SetCameraPID:
 		// Just acknowledge the camera PID
 	}
 }
 
 // MockCamera is a simple mock camera
 type MockCamera struct {
-	camera receiver.Camera
+	camera system.Camera
 }
 
 func NewMockCamera() actor.Producer {
 	return func() actor.Receiver {
 		return &MockCamera{
-			camera: receiver.Camera{
+			camera: system.Camera{
 				Position: mgl64.Vec3{0, 0, -2},
 				Rotation: mgl64.Vec2{0, 0},
 				Zoom:     1.0,
@@ -93,8 +93,8 @@ func (c *MockCamera) Receive(ctx *actor.Context) {
 	switch ctx.Message().(type) {
 	case actor.Initialized:
 		log.Printf("MockCamera initialized")
-	case receiver.RequestCamera:
-		ctx.Respond(receiver.ResponseCamera{
+	case system.RequestCamera:
+		ctx.Respond(system.ResponseCamera{
 			Camera: c.camera,
 		})
 	}
@@ -123,7 +123,7 @@ func (p *BenchmarkPlayer) Receive(c *actor.Context) {
 	switch c.Message().(type) {
 	case actor.Initialized:
 		log.Printf("BenchmarkPlayer %d initialized", p.playerID)
-	case receiver.Tick:
+	case system.Tick:
 		// Generate random movement for this player
 		velocity := mgl64.Vec3{
 			(rand.Float64() - 0.5) * 2, // Random between -1 and 1
@@ -137,15 +137,15 @@ func (p *BenchmarkPlayer) Receive(c *actor.Context) {
 		}
 
 		// Send movement update to physics
-		c.Send(p.physicsPID, receiver.EventEntityUpdate{
+		c.Send(p.physicsPID, system.EventEntityUpdate{
 			PID:      c.PID(),
 			Velocity: velocity,
 		})
 
 		// Send render update to renderer
-		c.Send(p.rendererPID, receiver.EventEntityRenderUpdate{
+		c.Send(p.rendererPID, system.EventEntityRenderUpdate{
 			PID: c.PID(),
-			EntityRigidBody: receiver.EntityRigidBody{
+			EntityRigidBody: system.EntityRigidBody{
 				Position: mgl64.Vec3{0, 0, 0}, // Mock position
 				Velocity: velocity,
 				Scale:    mgl64.Vec3{1, 1, 1},
@@ -223,7 +223,7 @@ func main() {
 	cameraPID := e.Spawn(NewMockCamera(), "camera")
 
 	// Set camera PID in physics system
-	e.Send(physicsPID, receiver.SetCameraPID{PID: cameraPID})
+	e.Send(physicsPID, system.SetCameraPID{PID: cameraPID})
 
 	// Create benchmark players
 	playerPIDs := make([]*actor.PID, *players)
@@ -254,7 +254,7 @@ func main() {
 			latestTick = now
 
 			atomic.AddInt64(&stats.TotalTicks, 1)
-			e.BroadcastEvent(receiver.Tick{DeltaTime: deltaTime})
+			e.BroadcastEvent(system.Tick{DeltaTime: deltaTime})
 
 		case <-done:
 			stats.EndTime = time.Now()

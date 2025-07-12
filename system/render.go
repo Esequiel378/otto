@@ -1,4 +1,4 @@
-package receiver
+package system
 
 import (
 	"github.com/anthdm/hollywood/actor"

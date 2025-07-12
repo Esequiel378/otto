@@ -1,4 +1,4 @@
-package receiver
+package system
 
 import (
 	"otto/manager"
