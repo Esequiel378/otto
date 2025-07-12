@@ -1,8 +1,8 @@
 package camera
 
 import (
-	"otto/manager"
 	"otto/system"
+	"otto/system/input"
 
 	"math"
 
@@ -25,7 +25,7 @@ type CameraActor struct {
 
 var _ actor.Receiver = (*CameraActor)(nil)
 
-func NewCamera(inputPID *actor.PID) actor.Producer {
+func New(inputPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
 		return &CameraActor{
 			camera: Camera{
@@ -44,10 +44,10 @@ func (ca *CameraActor) Receive(c *actor.Context) {
 		// Subscribe to input events
 		c.Engine().Subscribe(c.PID())
 		// Register our input context with the input actor
-		c.Send(ca.inputPID, system.RegisterInputContext{
-			Context: &InputCameraControl{},
+		c.Send(ca.inputPID, input.EventRegisterInputs{
+			Contexts: []input.Context{&InputCameraControl{}},
 		})
-	case manager.InputEvent:
+	case input.EventInput:
 		switch msg.Context.(type) {
 		case *InputCameraControl:
 			ca.handleCameraInput(msg.Context.(*InputCameraControl))

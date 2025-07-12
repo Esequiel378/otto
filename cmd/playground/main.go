@@ -2,10 +2,15 @@ package main
 
 import (
 	"log"
-	"otto/internal/cube"
-	"otto/internal/player"
+	"otto"
+	"otto/cmd/playground/cube"
+	"otto/cmd/playground/player"
 	"otto/manager"
 	"otto/system"
+	"otto/system/camera"
+	"otto/system/input"
+	"otto/system/physics"
+	"otto/system/renderer"
 	"runtime"
 	"time"
 
@@ -22,16 +27,16 @@ func main() {
 		log.Fatalf("failed to create actor engine: %v", err)
 	}
 
-	inputPID := e.Spawn(system.NewInputActor(), "input")
-	cameraPID := e.Spawn(system.NewCamera(inputPID), "camera")
-	rendererPID := e.Spawn(system.NewRender(), "renderer")
-	physicsPID := e.Spawn(system.NewPhysics(cameraPID), "physics")
+	inputPID := e.Spawn(input.New(), "input")
+	cameraPID := e.Spawn(camera.New(inputPID), "camera")
+	rendererPID := e.Spawn(renderer.New(), "renderer")
+	physicsPID := e.Spawn(physics.New(cameraPID), "physics")
 
 	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
 
 	e.Spawn(cube.NewCube(physicsPID, rendererPID, inputPID), "test_cube")
 
-	window, err := NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
+	window, err := otto.NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {
 		log.Fatalf("failed to create window: %v", err)
 	}
@@ -71,20 +76,20 @@ func main() {
 
 	window.Run(func(deltaTime float64) {
 		// Request camera data
-		cameraResp := e.Request(cameraPID, system.RequestCamera{}, 10*time.Millisecond)
+		cameraResp := e.Request(cameraPID, camera.RequestCamera{}, 10*time.Millisecond)
 		cameraRes, err := cameraResp.Result()
 		if err != nil {
 			log.Printf("failed to request camera: %v", err)
 			return
 		}
-		camera, ok := cameraRes.(system.ResponseCamera)
+		camera, ok := cameraRes.(camera.ResponseCamera)
 		if !ok {
 			log.Printf("failed to cast camera response: %v", cameraRes)
 			return
 		}
 
 		// Request entities from renderer
-		resp := e.Request(rendererPID, system.RequestEntities{}, 10*time.Millisecond)
+		resp := e.Request(rendererPID, renderer.RequestEntities{}, 10*time.Millisecond)
 
 		res, err := resp.Result()
 		if err != nil {
@@ -92,7 +97,7 @@ func main() {
 			return
 		}
 
-		entities, ok := res.(system.EntitiesResponse)
+		entities, ok := res.(renderer.EntitiesResponse)
 		if !ok {
 			log.Printf("failed to cast entities response: %v", res)
 			return
@@ -100,7 +105,7 @@ func main() {
 
 		// Render entities using OpenGL
 		for _, entity := range entities.Entities {
-			RenderEntity(shaderManager, modelManager, &entity, &camera.Camera)
+			otto.RenderEntity(shaderManager, modelManager, &entity, &camera.Camera)
 		}
 	})
 }

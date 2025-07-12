@@ -1,6 +1,7 @@
 package physics
 
 import (
+	"otto/system"
 	"otto/system/camera"
 
 	"github.com/anthdm/hollywood/actor"
@@ -15,7 +16,7 @@ type Physics struct {
 
 var _ actor.Receiver = (*Physics)(nil)
 
-func NewPhysics(cameraPID *actor.PID) actor.Producer {
+func New(cameraPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
 		return &Physics{
 			cameraPID: cameraPID,
@@ -28,9 +29,9 @@ func (p *Physics) Receive(c *actor.Context) {
 	case actor.Initialized:
 		c.Engine().Subscribe(c.PID())
 		p.entities = make(map[*actor.PID]EntityRigidBody)
-	case EventEntityInitialized:
+	case EventRigidBodyRegister:
 		p.entities[msg.PID] = msg.EntityRigidBody
-	case EventEntityUpdate:
+	case EventRigidBodyUpdate:
 		entity, ok := p.entities[msg.PID]
 		if !ok {
 			return
@@ -38,9 +39,9 @@ func (p *Physics) Receive(c *actor.Context) {
 
 		entity.Velocity = msg.Velocity
 		p.entities[msg.PID] = entity
-	case CameraUpdate:
+	case EventCameraUpdate:
 		p.latestCamera = &msg.Camera
-	case Tick:
+	case system.Tick:
 		p.Update(c)
 	}
 }
@@ -82,7 +83,7 @@ func (p *Physics) UpdatePosition(c *actor.Context, pid *actor.PID, entity Entity
 
 	p.entities[pid] = entity
 
-	c.Send(pid, EventEntityTransform{
+	c.Send(pid, EventRigidBodyTransform{
 		PID:      pid,
 		Position: entity.Position,
 	})

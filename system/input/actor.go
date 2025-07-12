@@ -1,25 +1,24 @@
-package system
+package input
 
 import (
-	"otto/manager"
+	"otto/system"
 
 	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/anthdm/hollywood/actor"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
 // InputActor handles input processing during tick events
 type InputActor struct {
-	contexts    map[string]manager.InputContext
+	contexts    map[string]Context
 	inputStates map[string]bool // Track if each context is currently "pressed"
 }
 
 var _ actor.Receiver = (*InputActor)(nil)
 
-func NewInputActor() actor.Producer {
+func New() actor.Producer {
 	return func() actor.Receiver {
 		return &InputActor{
-			contexts:    make(map[string]manager.InputContext),
+			contexts:    make(map[string]Context),
 			inputStates: make(map[string]bool),
 		}
 	}
@@ -30,15 +29,17 @@ func (ia *InputActor) Receive(c *actor.Context) {
 	case actor.Initialized:
 		// Subscribe to tick events when the actor is initialized
 		c.Engine().Subscribe(c.PID())
-	case Tick:
+	case system.Tick:
 		// Process input during each tick
 		ia.processAllInput(c)
-	case RegisterInputContext:
-		// Register an input context from an entity
-		ia.contexts[msg.Context.GetType()] = msg.Context
-	case UnregisterInputContext:
-		// Unregister an input context
-		delete(ia.contexts, msg.ContextType)
+	case EventRegisterInputs:
+		for _, context := range msg.Contexts {
+			ia.contexts[context.GetType()] = context
+		}
+	case EventUnregisterInputs:
+		for _, contextType := range msg.ContextTypes {
+			delete(ia.contexts, contextType)
+		}
 	}
 }
 
@@ -84,14 +85,14 @@ func (ia *InputActor) processAllInput(c *actor.Context) {
 		shouldBroadcast := stateChanged
 
 		// Special handling for camera input - always broadcast when there's movement
-		if _, ok := context.(*manager.InputCameraControl); ok {
-			camera := context.(*manager.InputCameraControl)
-			shouldBroadcast = hasInput || (camera.Rotation != (mgl64.Vec2{}) || camera.Zoom != 0.0)
-		}
+		// if _, ok := context.(*camera.InputCameraControl); ok {
+		// 	camera := context.(*camera.InputCameraControl)
+		// 	shouldBroadcast = hasInput || (camera.Rotation != (mgl64.Vec2{}) || camera.Zoom != 0.0)
+		// }
 
 		// Broadcast if needed
 		if shouldBroadcast {
-			event := manager.InputEvent{
+			event := EventInput{
 				Context: context,
 			}
 			c.Engine().BroadcastEvent(event)
@@ -100,14 +101,4 @@ func (ia *InputActor) processAllInput(c *actor.Context) {
 		// Update state
 		ia.inputStates[contextType] = hasInput
 	}
-}
-
-// RegisterInputContext is sent by entities to register their input contexts
-type RegisterInputContext struct {
-	Context manager.InputContext
-}
-
-// UnregisterInputContext is sent by entities to unregister their input contexts
-type UnregisterInputContext struct {
-	ContextType string
 }

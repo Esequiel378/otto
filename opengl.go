@@ -1,10 +1,11 @@
-package main
+package otto
 
 import (
 	"log"
 	"math"
 	"otto/manager"
-	"otto/system"
+	"otto/system/camera"
+	"otto/system/physics"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
@@ -17,7 +18,7 @@ func vec64ToVec32(v mgl64.Vec3) mgl32.Vec3 {
 }
 
 // RenderEntity renders an entity using OpenGL 4.1 core profile
-func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.ModelManager, entity *system.EntityRigidBody, camera *system.Camera) {
+func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.ModelManager, entity *physics.EntityRigidBody, camera *camera.Camera) {
 	shaderProgram, err := shaderManager.Program("camera")
 	if err != nil {
 		log.Printf("Failed to get shader program: %v", err)

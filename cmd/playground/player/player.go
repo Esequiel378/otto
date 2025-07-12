@@ -1,14 +1,15 @@
 package player
 
 import (
-	"otto/manager"
-	"otto/system"
+	"otto"
+	"otto/system/input"
+	"otto/system/physics"
 
 	"github.com/anthdm/hollywood/actor"
 )
 
 type Player struct {
-	*system.Entity
+	*otto.Entity
 }
 
 var _ actor.Receiver = (*Player)(nil)
@@ -16,7 +17,7 @@ var _ actor.Receiver = (*Player)(nil)
 func NewPlayer(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
 		return &Player{
-			Entity: system.NewEntity(physicsPID, rendererPID, inputPID),
+			Entity: otto.NewEntity(physicsPID, rendererPID, inputPID),
 		}
 	}
 }
@@ -26,11 +27,11 @@ func (p *Player) Receive(c *actor.Context) {
 
 	switch msg := c.Message().(type) {
 	case actor.Initialized:
-		p.RegisterInputContext(c, &InputPlayerMovement{})
-	case manager.InputEvent:
+		p.RegisterInputs(c, &InputPlayerMovement{}, &InputPlayerCamera{})
+	case input.EventInput:
 		switch ctx := msg.Context.(type) {
 		case *InputPlayerMovement:
-			c.Send(p.PhysicsPID(), system.EventEntityUpdate{
+			c.Send(p.PhysicsPID(), physics.EventRigidBodyUpdate{
 				PID:      c.PID(),
 				Velocity: ctx.Velocity,
 			})

@@ -1,7 +1,9 @@
-package system
+package otto
 
 import (
-	"otto/manager"
+	"otto/system/input"
+	"otto/system/physics"
+	"otto/system/renderer"
 
 	"github.com/anthdm/hollywood/actor"
 	"github.com/go-gl/mathgl/mgl64"
@@ -33,11 +35,10 @@ func NewEntity(physicsPID, rendererPID, inputPID *actor.PID) *Entity {
 func (e *Entity) Receive(c *actor.Context) {
 	switch msg := c.Message().(type) {
 	case actor.Initialized:
-		c.Engine().Subscribe(c.PID())
 		// Send initialization to physics system
-		c.Send(e.PhysicsPID(), EventEntityInitialized{
+		c.Send(e.PhysicsPID(), physics.EventRigidBodyRegister{
 			PID: c.PID(),
-			EntityRigidBody: EntityRigidBody{
+			EntityRigidBody: physics.EntityRigidBody{
 				Position: e.position,
 				Velocity: e.velocity,
 				Scale:    e.scale,
@@ -45,20 +46,20 @@ func (e *Entity) Receive(c *actor.Context) {
 			},
 		})
 		// Also send initialization to renderer
-		c.Send(e.RendererPID(), EventEntityInitialized{
+		c.Send(e.RendererPID(), renderer.EventEntityRegister{
 			PID: c.PID(),
-			EntityRigidBody: EntityRigidBody{
+			EntityRigidBody: physics.EntityRigidBody{
 				Position: e.position,
 				Velocity: e.velocity,
 				Scale:    e.scale,
 				Rotation: e.rotation,
 			},
 		})
-	case EventEntityTransform:
+	case physics.EventRigidBodyTransform:
 		e.Transform(c, msg)
-		c.Send(e.RendererPID(), EventEntityRenderUpdate{
+		c.Send(e.RendererPID(), renderer.EventEntityRenderUpdate{
 			PID: c.PID(),
-			EntityRigidBody: EntityRigidBody{
+			EntityRigidBody: physics.EntityRigidBody{
 				Position: e.position,
 				Velocity: e.velocity,
 				Scale:    e.scale,
@@ -68,13 +69,13 @@ func (e *Entity) Receive(c *actor.Context) {
 	}
 }
 
-func (e *Entity) Transform(c *actor.Context, msg EventEntityTransform) {
+func (e *Entity) Transform(c *actor.Context, msg physics.EventRigidBodyTransform) {
 	e.position = msg.Position
 }
 
-func (e *Entity) RegisterInputContext(c *actor.Context, inputContext manager.InputContext) {
-	c.Send(e.InputPID(), RegisterInputContext{
-		Context: inputContext,
+func (e *Entity) RegisterInputs(c *actor.Context, contexts ...input.Context) {
+	c.Send(e.InputPID(), input.EventRegisterInputs{
+		Contexts: contexts,
 	})
 }
 
