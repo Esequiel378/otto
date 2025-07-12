@@ -2,8 +2,10 @@ package player
 
 import (
 	"otto"
+	"otto/system/camera"
 	"otto/system/input"
 	"otto/system/physics"
+	"otto/util"
 
 	"github.com/anthdm/hollywood/actor"
 	"github.com/go-gl/mathgl/mgl64"
@@ -11,6 +13,7 @@ import (
 
 type Player struct {
 	*otto.Entity
+	camera *camera.Camera
 }
 
 var _ actor.Receiver = (*Player)(nil)
@@ -18,37 +21,56 @@ var _ actor.Receiver = (*Player)(nil)
 func NewPlayer(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
 		return &Player{
-			Entity: otto.NewEntity(physicsPID, rendererPID),
+			Entity: otto.NewEntity(physicsPID, rendererPID, inputPID),
 		}
 	}
 }
 
-func (p *Player) Receive(c *actor.Context) {
-	defer p.Entity.Receive(c)
+func (p *Player) Receive(ctx *actor.Context) {
+	defer p.Entity.Receive(ctx)
+	defer p.camera.Receive(ctx)
 
-	switch msg := c.Message().(type) {
+	switch msg := ctx.Message().(type) {
 	case actor.Initialized:
-		input.RegisterInputs(c, &InputPlayerMovement{}, &InputPlayerCamera{})
+		p.camera = camera.NewCamera(nil, p.RendererPID())
+		input.RegisterInputs(
+			ctx,
+			p.InputPID(),
+			&InputPlayerMovement{PID: ctx.PID()},
+			&InputPlayerCamera{PID: ctx.PID()},
+		)
 	case input.EventInput:
-		switch ctx := msg.Context.(type) {
-		case *InputPlayerMovement:
-			c.Send(p.PhysicsPID(), physics.EventRigidBodyUpdate{
-				PID:             c.PID(),
-				Velocity:        ctx.Velocity,
-				AngularVelocity: mgl64.Vec3{}, // No rotation for movement input
-			})
-		case *InputPlayerCamera:
+		p.HandleInput(ctx, msg)
+	}
+}
+
+func (p *Player) HandleInput(ctx *actor.Context, event input.EventInput) {
+	switch input := event.Context.(type) {
+	case *InputPlayerMovement:
+		// Use camera vectors to transform velocity into world space
+		front := util.Vec3FrontVector(p.Entity.Rotation)
+		right := util.Vec3RightVector(p.Entity.Rotation)
+		up := util.Vec3UpVector(p.Entity.Rotation)
+
+		// Transform velocity from camera-relative to world coordinates
+		velocity := right.Mul(input.Velocity.X()).
+			Add(up.Mul(input.Velocity.Y())).
+			Add(front.Mul(input.Velocity.Z()))
+
+		ctx.Send(p.PhysicsPID(), physics.EventRigidBodyUpdate{
+			PID:             ctx.PID(),
+			Velocity:        velocity,
+			AngularVelocity: mgl64.Vec3{}, // No rotation for movement input
+		})
+	case *InputPlayerCamera:
+		ctx.Send(p.PhysicsPID(), physics.EventRigidBodyUpdate{
+			PID: ctx.PID(),
 			// Convert 2D rotation (pitch, yaw) to 3D angular velocity
-			angularVelocity := mgl64.Vec3{
-				ctx.Rotation[0], // Pitch -> X rotation
-				ctx.Rotation[1], // Yaw -> Y rotation
-				0,               // No roll
-			}
-			c.Send(p.PhysicsPID(), physics.EventRigidBodyUpdate{
-				PID:             c.PID(),
-				Velocity:        mgl64.Vec3{}, // No movement for camera input
-				AngularVelocity: angularVelocity,
-			})
-		}
+			AngularVelocity: mgl64.Vec3{
+				input.Rotation[0],
+				input.Rotation[1],
+				0,
+			},
+		})
 	}
 }

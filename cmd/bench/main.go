@@ -27,7 +27,7 @@ func NewMockRenderer() actor.Producer {
 	}
 }
 
-func (r *MockRenderer) Receive(c *actor.Context) {
+func (r *MockRenderer) Receive(ctx *actor.Context) {
 	switch c.Message().(type) {
 	case actor.Initialized:
 		log.Printf("MockRenderer initialized")
@@ -56,7 +56,7 @@ func NewMockPhysics(messageCounter *int64) actor.Producer {
 	}
 }
 
-func (m *MockPhysics) Receive(c *actor.Context) {
+func (m *MockPhysics) Receive(ctx *actor.Context) {
 	switch c.Message().(type) {
 	case actor.Initialized:
 		log.Printf("MockPhysics initialized")
@@ -119,7 +119,7 @@ func NewBenchmarkPlayer(physicsPID, rendererPID *actor.PID, playerID int) actor.
 	}
 }
 
-func (p *BenchmarkPlayer) Receive(c *actor.Context) {
+func (p *BenchmarkPlayer) Receive(ctx *actor.Context) {
 	switch c.Message().(type) {
 	case actor.Initialized:
 		log.Printf("BenchmarkPlayer %d initialized", p.playerID)

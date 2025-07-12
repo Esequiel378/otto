@@ -22,10 +22,10 @@ func New() actor.Producer {
 	}
 }
 
-func (r *Render) Receive(c *actor.Context) {
-	switch msg := c.Message().(type) {
+func (r *Render) Receive(ctx *actor.Context) {
+	switch msg := ctx.Message().(type) {
 	case actor.Initialized:
-		c.Engine().Subscribe(c.PID())
+		ctx.Engine().Subscribe(ctx.PID())
 		r.entities = make(map[*actor.PID]physics.EntityRigidBody)
 	case EventEntityRegister:
 		r.entities[msg.PID] = msg.EntityRigidBody
@@ -36,6 +36,6 @@ func (r *Render) Receive(c *actor.Context) {
 		for pid := range r.entities {
 			entities = append(entities, r.entities[pid])
 		}
-		c.Respond(EntitiesResponse{Entities: entities})
+		ctx.Respond(EntitiesResponse{Entities: entities})
 	}
 }

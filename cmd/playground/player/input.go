@@ -4,18 +4,20 @@ import (
 	"otto/system/input"
 
 	"github.com/AllenDang/cimgui-go/imgui"
+	"github.com/anthdm/hollywood/actor"
 	"github.com/go-gl/mathgl/mgl64"
 )
 
 type InputPlayerMovement struct {
+	PID      *actor.PID
 	Velocity mgl64.Vec3
 }
 
 var _ input.Context = (*InputPlayerMovement)(nil)
 
-// GetType returns the type identifier for player movement input
-func (h *InputPlayerMovement) GetType() string {
-	return "player_movement"
+// GetPID returns the PID of the input context
+func (h *InputPlayerMovement) GetPID() *actor.PID {
+	return h.PID
 }
 
 // Process handles player movement input
@@ -57,13 +59,14 @@ func (h *InputPlayerMovement) Process() bool {
 
 // InputPlayerCamera handles camera movement input
 type InputPlayerCamera struct {
+	PID      *actor.PID
 	Rotation mgl64.Vec2 // Pitch, Yaw
 	Zoom     float64
 }
 
-// GetType returns the type identifier for camera control input
-func (c *InputPlayerCamera) GetType() string {
-	return "player_camera"
+// GetPID returns the PID of the input context
+func (c *InputPlayerCamera) GetPID() *actor.PID {
+	return c.PID
 }
 
 // Process handles camera control input

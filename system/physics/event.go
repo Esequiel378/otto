@@ -1,8 +1,6 @@
 package physics
 
 import (
-	"otto/system/camera"
-
 	"github.com/anthdm/hollywood/actor"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -20,8 +18,4 @@ type EventRigidBodyTransform struct {
 	PID      *actor.PID
 	Position mgl64.Vec3
 	Rotation mgl64.Vec3
-}
-
-type EventCameraUpdate struct {
-	Camera camera.Camera
 }

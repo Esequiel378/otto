@@ -2,23 +2,17 @@ package otto
 
 import (
 	"log"
-	"math"
 	"otto/manager"
-	"otto/system/camera"
+	"otto/system"
 	"otto/system/physics"
+	"otto/util"
 
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
-	"github.com/go-gl/mathgl/mgl64"
 )
 
-// Convert mgl64.Vec3 to mgl32.Vec3
-func vec64ToVec32(v mgl64.Vec3) mgl32.Vec3 {
-	return mgl32.Vec3{float32(v.X()), float32(v.Y()), float32(v.Z())}
-}
-
 // RenderEntity renders an entity using OpenGL 4.1 core profile
-func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.ModelManager, entity *physics.EntityRigidBody, camera *camera.Camera) {
+func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.ModelManager, entity *physics.EntityRigidBody, camera *system.Camera) {
 	shaderProgram, err := shaderManager.Program("camera")
 	if err != nil {
 		log.Printf("Failed to get shader program: %v", err)
@@ -44,9 +38,9 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	gl.BindVertexArray(model.VAO)
 
 	// Set up transformation matrices
-	position := vec64ToVec32(entity.Position)
-	scale := vec64ToVec32(entity.Scale)
-	rotation := vec64ToVec32(entity.Rotation)
+	position := util.Vec64ToVec32(entity.Position)
+	scale := util.Vec64ToVec32(entity.Scale)
+	rotation := util.Vec64ToVec32(entity.Rotation)
 
 	// Create model matrix
 	modelMatrix := mgl32.Ident4()
@@ -57,34 +51,9 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	modelMatrix = modelMatrix.Mul4(mgl32.HomogRotate3D(rotation.Z(), mgl32.Vec3{0, 0, 1}))
 
 	// Create view matrix using camera data
-	cameraPos := vec64ToVec32(camera.Position)
-
-	// Calculate camera direction based on rotation (first-person camera)
-	pitch := float32(camera.Rotation[0])
-	yaw := float32(camera.Rotation[1])
-
-	// Calculate the camera's forward direction
-	cosPitch := float32(math.Cos(float64(pitch)))
-	sinPitch := float32(math.Sin(float64(pitch)))
-	cosYaw := float32(math.Cos(float64(yaw)))
-	sinYaw := float32(math.Sin(float64(yaw)))
-
-	// Forward vector (where the camera is looking)
-	forward := mgl32.Vec3{
-		cosPitch * sinYaw,
-		sinPitch,
-		cosPitch * cosYaw,
-	}
-
-	// Right vector (camera's right direction)
-	right := mgl32.Vec3{
-		cosYaw,
-		0,
-		-sinYaw,
-	}
-
-	// Up vector (camera's up direction)
-	up := right.Cross(forward)
+	cameraPos := util.Vec64ToVec32(camera.Position)
+	forward := util.Vec64ToVec32(util.Vec2FrontVector(camera.Rotation).Vec3(0))
+	up := util.Vec64ToVec32(util.Vec2UpVector(camera.Rotation).Vec3(0))
 
 	// Calculate the target point (where camera is looking)
 	target := cameraPos.Add(forward)

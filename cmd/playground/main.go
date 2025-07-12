@@ -28,13 +28,12 @@ func main() {
 	}
 
 	inputPID := e.Spawn(input.New(), "input")
-	cameraPID := e.Spawn(camera.New(inputPID), "camera")
 	rendererPID := e.Spawn(renderer.New(), "renderer")
-	physicsPID := e.Spawn(physics.New(cameraPID), "physics")
+	physicsPID := e.Spawn(physics.New(), "physics")
 
-	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
+	playerPID := e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
 
-	e.Spawn(cube.NewCube(physicsPID, rendererPID), "test_cube")
+	e.Spawn(cube.NewCube(physicsPID, rendererPID, inputPID), "test_cube")
 
 	window, err := otto.NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {
@@ -76,7 +75,7 @@ func main() {
 
 	window.Run(func(deltaTime float64) {
 		// Request camera data
-		cameraResp := e.Request(cameraPID, camera.RequestCamera{}, 10*time.Millisecond)
+		cameraResp := e.Request(playerPID, camera.RequestCamera{}, 10*time.Millisecond)
 		cameraRes, err := cameraResp.Result()
 		if err != nil {
 			log.Printf("failed to request camera: %v", err)
@@ -105,6 +104,7 @@ func main() {
 
 		// Render entities using OpenGL
 		for _, entity := range entities.Entities {
+			log.Printf("rendering entity: %v", entity)
 			otto.RenderEntity(shaderManager, modelManager, &entity, &camera.Camera)
 		}
 	})
