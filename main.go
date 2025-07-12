@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"otto/internal/cube"
+	"otto/internal/player"
 	"otto/manager"
 	"otto/receiver"
 	"runtime"
@@ -20,21 +22,14 @@ func main() {
 		log.Fatalf("failed to create actor engine: %v", err)
 	}
 
-	rendererPID := e.Spawn(receiver.NewRender(), "renderer")
-	physicsPID := e.Spawn(receiver.NewPhysics(), "physics")
-
-	// Spawn input actor first since other actors need its PID
 	inputPID := e.Spawn(receiver.NewInputActor(), "input")
-
 	cameraPID := e.Spawn(receiver.NewCamera(inputPID), "camera")
+	rendererPID := e.Spawn(receiver.NewRender(), "renderer")
+	physicsPID := e.Spawn(receiver.NewPhysics(cameraPID), "physics")
 
-	// Set camera PID in physics system
-	e.Send(physicsPID, receiver.SetCameraPID{PID: cameraPID})
+	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
 
-	e.Spawn(receiver.NewPlayer(physicsPID, rendererPID, inputPID), "player")
-
-	// Add a test cube entity for visibility testing
-	e.Spawn(receiver.NewEntity(physicsPID, rendererPID, func() {}), "test_cube")
+	e.Spawn(cube.NewCube(physicsPID, rendererPID, inputPID), "test_cube")
 
 	window, err := NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {

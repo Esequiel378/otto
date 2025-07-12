@@ -13,9 +13,11 @@ type Physics struct {
 
 var _ actor.Receiver = (*Physics)(nil)
 
-func NewPhysics() actor.Producer {
+func NewPhysics(cameraPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
-		return &Physics{}
+		return &Physics{
+			cameraPID: cameraPID,
+		}
 	}
 }
 
@@ -34,8 +36,6 @@ func (p *Physics) Receive(c *actor.Context) {
 
 		entity.Velocity = msg.Velocity
 		p.entities[msg.PID] = entity
-	case SetCameraPID:
-		p.cameraPID = msg.PID
 	case CameraUpdate:
 		p.latestCamera = &msg.Camera
 	case Tick:
