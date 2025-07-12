@@ -1,7 +1,6 @@
 package otto
 
 import (
-	"otto/system/input"
 	"otto/system/physics"
 	"otto/system/renderer"
 
@@ -17,17 +16,15 @@ type Entity struct {
 
 	physicsPID  *actor.PID
 	rendererPID *actor.PID
-	inputPID    *actor.PID
 }
 
 var _ actor.Receiver = (*Entity)(nil)
 
-func NewEntity(physicsPID, rendererPID, inputPID *actor.PID) *Entity {
+func NewEntity(physicsPID, rendererPID *actor.PID) *Entity {
 	return &Entity{
 		scale:       mgl64.Vec3{1, 1, 1},
 		physicsPID:  physicsPID,
 		rendererPID: rendererPID,
-		inputPID:    inputPID,
 	}
 }
 
@@ -35,58 +32,50 @@ func NewEntity(physicsPID, rendererPID, inputPID *actor.PID) *Entity {
 func (e *Entity) Receive(c *actor.Context) {
 	switch msg := c.Message().(type) {
 	case actor.Initialized:
-		// Send initialization to physics system
-		c.Send(e.PhysicsPID(), physics.EventRigidBodyRegister{
-			PID: c.PID(),
-			EntityRigidBody: physics.EntityRigidBody{
-				Position: e.position,
-				Velocity: e.velocity,
-				Scale:    e.scale,
-				Rotation: e.rotation,
-			},
-		})
-		// Also send initialization to renderer
-		c.Send(e.RendererPID(), renderer.EventEntityRegister{
-			PID: c.PID(),
-			EntityRigidBody: physics.EntityRigidBody{
-				Position: e.position,
-				Velocity: e.velocity,
-				Scale:    e.scale,
-				Rotation: e.rotation,
-			},
-		})
+		if e.physicsPID != nil {
+			// Send initialization to physics system
+			c.Send(e.physicsPID, physics.EventRigidBodyRegister{
+				PID: c.PID(),
+				EntityRigidBody: physics.EntityRigidBody{
+					Position:        e.position,
+					Velocity:        e.velocity,
+					Scale:           e.scale,
+					Rotation:        e.rotation,
+					AngularVelocity: mgl64.Vec3{},
+				},
+			})
+		}
+		if e.rendererPID != nil {
+			// Also send initialization to renderer
+			c.Send(e.rendererPID, renderer.EventEntityRegister{
+				PID: c.PID(),
+				EntityRigidBody: physics.EntityRigidBody{
+					Position:        e.position,
+					Velocity:        e.velocity,
+					Scale:           e.scale,
+					Rotation:        e.rotation,
+					AngularVelocity: mgl64.Vec3{},
+				},
+			})
+		}
 	case physics.EventRigidBodyTransform:
 		e.Transform(c, msg)
-		c.Send(e.RendererPID(), renderer.EventEntityRenderUpdate{
-			PID: c.PID(),
-			EntityRigidBody: physics.EntityRigidBody{
-				Position: e.position,
-				Velocity: e.velocity,
-				Scale:    e.scale,
-				Rotation: e.rotation,
-			},
-		})
+		if e.rendererPID != nil {
+			c.Send(e.rendererPID, renderer.EventEntityRenderUpdate{
+				PID: c.PID(),
+				EntityRigidBody: physics.EntityRigidBody{
+					Position:        e.position,
+					Velocity:        e.velocity,
+					Scale:           e.scale,
+					Rotation:        e.rotation,
+					AngularVelocity: mgl64.Vec3{},
+				},
+			})
+		}
 	}
 }
 
 func (e *Entity) Transform(c *actor.Context, msg physics.EventRigidBodyTransform) {
 	e.position = msg.Position
-}
-
-func (e *Entity) RegisterInputs(c *actor.Context, contexts ...input.Context) {
-	c.Send(e.InputPID(), input.EventRegisterInputs{
-		Contexts: contexts,
-	})
-}
-
-func (e *Entity) PhysicsPID() *actor.PID {
-	return e.physicsPID
-}
-
-func (e *Entity) RendererPID() *actor.PID {
-	return e.rendererPID
-}
-
-func (e *Entity) InputPID() *actor.PID {
-	return e.inputPID
+	e.rotation = msg.Rotation
 }

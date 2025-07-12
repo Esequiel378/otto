@@ -38,6 +38,7 @@ func (p *Physics) Receive(c *actor.Context) {
 		}
 
 		entity.Velocity = msg.Velocity
+		entity.AngularVelocity = msg.AngularVelocity
 		p.entities[msg.PID] = entity
 	case EventCameraUpdate:
 		p.latestCamera = &msg.Camera
@@ -75,10 +76,19 @@ func (p *Physics) UpdatePosition(c *actor.Context, pid *actor.PID, entity Entity
 
 	entity.Position = entity.Position.Add(movementDirection.Mul(movementSpeed))
 
+	// Apply angular velocity to rotation
+	rotationSpeed := 0.1 // Fixed rotation speed per frame
+	entity.Rotation = entity.Rotation.Add(entity.AngularVelocity.Mul(rotationSpeed))
+
 	// Don't apply damping when there's active input - let the input system control velocity
 	// Only apply damping when there's no input (velocity will be zero)
 	if entity.Velocity.Len() < 0.01 {
 		entity.Velocity = mgl64.Vec3{}
+	}
+
+	// Apply damping to angular velocity when there's no rotation input
+	if entity.AngularVelocity.Len() < 0.01 {
+		entity.AngularVelocity = mgl64.Vec3{}
 	}
 
 	p.entities[pid] = entity
@@ -86,5 +96,6 @@ func (p *Physics) UpdatePosition(c *actor.Context, pid *actor.PID, entity Entity
 	c.Send(pid, EventRigidBodyTransform{
 		PID:      pid,
 		Position: entity.Position,
+		Rotation: entity.Rotation,
 	})
 }

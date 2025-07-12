@@ -12,12 +12,14 @@ type EventRigidBodyRegister struct {
 	EntityRigidBody EntityRigidBody
 }
 type EventRigidBodyUpdate struct {
-	PID      *actor.PID
-	Velocity mgl64.Vec3
+	PID             *actor.PID
+	Velocity        mgl64.Vec3
+	AngularVelocity mgl64.Vec3
 }
 type EventRigidBodyTransform struct {
 	PID      *actor.PID
 	Position mgl64.Vec3
+	Rotation mgl64.Vec3
 }
 
 type EventCameraUpdate struct {
