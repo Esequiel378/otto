@@ -1,7 +1,8 @@
-package system
+package camera
 
 import (
 	"otto/manager"
+	"otto/system"
 
 	"math"
 
@@ -43,20 +44,20 @@ func (ca *CameraActor) Receive(c *actor.Context) {
 		// Subscribe to input events
 		c.Engine().Subscribe(c.PID())
 		// Register our input context with the input actor
-		c.Send(ca.inputPID, RegisterInputContext{
-			Context: &manager.InputCameraControl{},
+		c.Send(ca.inputPID, system.RegisterInputContext{
+			Context: &InputCameraControl{},
 		})
 	case manager.InputEvent:
 		switch msg.Context.(type) {
-		case *manager.InputCameraControl:
-			ca.handleCameraInput(msg.Context.(*manager.InputCameraControl))
+		case *InputCameraControl:
+			ca.handleCameraInput(msg.Context.(*InputCameraControl))
 		}
 	case RequestCamera:
 		// Respond with current camera state
 		c.Respond(ResponseCamera{
 			Camera: ca.camera,
 		})
-	case Tick:
+	case system.Tick:
 		// Broadcast camera update on every tick
 		c.Engine().BroadcastEvent(CameraUpdate{
 			Camera: ca.camera,
@@ -64,7 +65,7 @@ func (ca *CameraActor) Receive(c *actor.Context) {
 	}
 }
 
-func (ca *CameraActor) handleCameraInput(input *manager.InputCameraControl) {
+func (ca *CameraActor) handleCameraInput(input *InputCameraControl) {
 	// Apply rotation
 	if input.Rotation != (mgl64.Vec2{}) {
 		rotationSpeed := 0.1
@@ -92,14 +93,6 @@ func (ca *CameraActor) handleCameraInput(input *manager.InputCameraControl) {
 			ca.camera.Zoom = 10.0
 		}
 	}
-}
-
-// RequestCamera is sent to get the current camera state
-type RequestCamera struct{}
-
-// ResponseCamera contains the current camera state
-type ResponseCamera struct {
-	Camera Camera
 }
 
 // GetFrontVector returns the camera's front (forward) direction vector

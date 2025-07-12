@@ -1,6 +1,8 @@
-package system
+package physics
 
 import (
+	"otto/system/camera"
+
 	"github.com/anthdm/hollywood/actor"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -8,7 +10,7 @@ import (
 type Physics struct {
 	entities     map[*actor.PID]EntityRigidBody
 	cameraPID    *actor.PID
-	latestCamera *Camera
+	latestCamera *camera.Camera
 }
 
 var _ actor.Receiver = (*Physics)(nil)
