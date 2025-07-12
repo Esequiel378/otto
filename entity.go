@@ -79,3 +79,11 @@ func (e *Entity) Transform(c *actor.Context, msg physics.EventRigidBodyTransform
 	e.position = msg.Position
 	e.rotation = msg.Rotation
 }
+
+func (e *Entity) PhysicsPID() *actor.PID {
+	return e.physicsPID
+}
+
+func (e *Entity) RendererPID() *actor.PID {
+	return e.rendererPID
+}

@@ -12,8 +12,8 @@ type Cube struct {
 
 var _ actor.Receiver = (*Cube)(nil)
 
-func NewCube(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
+func NewCube(physicsPID, rendererPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
-		return &Cube{Entity: otto.NewEntity(physicsPID, rendererPID, inputPID)}
+		return &Cube{Entity: otto.NewEntity(physicsPID, rendererPID)}
 	}
 }

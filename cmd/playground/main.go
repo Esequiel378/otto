@@ -34,7 +34,7 @@ func main() {
 
 	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
 
-	e.Spawn(cube.NewCube(physicsPID, rendererPID, inputPID), "test_cube")
+	e.Spawn(cube.NewCube(physicsPID, rendererPID), "test_cube")
 
 	window, err := otto.NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {
