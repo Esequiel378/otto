@@ -1,16 +1,17 @@
 package input
 
 import (
+	"log"
 	"otto/system"
 
-	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/anthdm/hollywood/actor"
 )
 
 // InputActor handles input processing during tick events
 type InputActor struct {
-	contexts    map[*actor.PID][]Context
-	inputStates map[*actor.PID][]bool // Track if each context is currently "pressed"
+	contexts      map[*actor.PID][]Context
+	inputStates   map[*actor.PID][]bool // Track if each context is currently "pressed"
+	inputProvider InputProvider
 }
 
 var _ actor.Receiver = (*InputActor)(nil)
@@ -18,8 +19,9 @@ var _ actor.Receiver = (*InputActor)(nil)
 func New() actor.Producer {
 	return func() actor.Receiver {
 		return &InputActor{
-			contexts:    make(map[*actor.PID][]Context),
-			inputStates: make(map[*actor.PID][]bool),
+			contexts:      make(map[*actor.PID][]Context),
+			inputStates:   make(map[*actor.PID][]bool),
+			inputProvider: NewImGuiProvider(),
 		}
 	}
 }
@@ -41,32 +43,19 @@ func (ia *InputActor) Receive(ctx *actor.Context) {
 
 // processAllInput processes all registered input contexts and sends events
 func (ia *InputActor) processAllInput(ctx *actor.Context) {
-	// Wrap everything in panic recovery to handle ImGui context issues
-	defer func() {
-		if r := recover(); r != nil {
-			// ImGui context is invalid or destroyed, silently return
-			return
-		}
-	}()
-
-	// Don't process input if ImGui wants to capture it
-	if ctx := imgui.CurrentContext(); ctx == nil {
+	// Update input state from the provider
+	if err := ia.inputProvider.Update(); err != nil {
+		log.Printf("Input provider update error: %v", err)
 		return
 	}
 
-	io := imgui.CurrentIO()
-	if io == nil {
-		return
-	}
-
-	if io.WantCaptureKeyboard() {
-		return
-	}
+	// Get the current input state
+	inputState := ia.inputProvider.GetInputState()
 
 	for pid, contexts := range ia.contexts {
 		for idx, context := range contexts {
-			// Process the context to get current state
-			hasInput := context.Process()
+			// Process the context to get current state, passing capture information
+			hasInput := context.Process(inputState, inputState.WantCaptureKeyboard(), inputState.WantCaptureMouse())
 
 			// Get previous state
 			states, exists := ia.inputStates[pid]
@@ -76,17 +65,17 @@ func (ia *InputActor) processAllInput(ctx *actor.Context) {
 
 			wasPressed := states[idx]
 
-			// Check if state has changed
-			stateChanged := hasInput != wasPressed
-			if stateChanged {
+			// Send event if there's input OR if the context is still active (for continuous input)
+			// This ensures smooth camera movement even when mouse delta is zero
+			if hasInput || (wasPressed && !hasInput) {
 				event := EventInput{
 					Context: context,
 				}
 				ctx.Send(pid, event)
 			}
 
-			// Update state
-			ia.inputStates[pid][idx] = stateChanged
+			// Update state - store the current input state, not whether it changed
+			ia.inputStates[pid][idx] = hasInput
 		}
 	}
 }

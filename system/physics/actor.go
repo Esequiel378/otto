@@ -41,20 +41,24 @@ func (p *Physics) Receive(ctx *actor.Context) {
 }
 
 func (p *Physics) Update(ctx *actor.Context) {
+	tick, ok := ctx.Message().(system.Tick)
+	if !ok {
+		panic("tick message not found")
+	}
+
 	for pid, entity := range p.entities {
-		p.UpdatePosition(ctx, pid, entity)
+		p.UpdatePosition(ctx, pid, entity, tick.DeltaTime)
 	}
 }
 
-func (p *Physics) UpdatePosition(ctx *actor.Context, pid *actor.PID, entity EntityRigidBody) {
-	// Apply velocity to position with a fixed movement speed
-	movementSpeed := 0.1 // Fixed movement speed per frame
+func (p *Physics) UpdatePosition(ctx *actor.Context, pid *actor.PID, entity EntityRigidBody, deltaTime float64) {
+	// Apply velocity to position with frame-rate independent movement speed
+	movementSpeed := 10.0 // Increased for faster movement
+	entity.Position = entity.Position.Add(entity.Velocity.Mul(movementSpeed * deltaTime))
 
-	entity.Position = entity.Position.Add(entity.Velocity.Mul(movementSpeed))
-
-	// Apply angular velocity to rotation
-	rotationSpeed := 0.1 // Fixed rotation speed per frame
-	entity.Rotation = entity.Rotation.Add(entity.AngularVelocity.Mul(rotationSpeed))
+	// Apply angular velocity to rotation with frame-rate independent rotation speed
+	rotationSpeed := 4.0 // Increased for faster camera
+	entity.Rotation = entity.Rotation.Add(entity.AngularVelocity.Mul(rotationSpeed * deltaTime))
 
 	// Don't apply damping when there's active input - let the input system control velocity
 	// Only apply damping when there's no input (velocity will be zero)

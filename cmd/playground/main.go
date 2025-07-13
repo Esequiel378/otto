@@ -1,19 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"otto"
 	"otto/cmd/playground/cube"
 	"otto/cmd/playground/player"
 	"otto/manager"
 	"otto/system"
-	"otto/system/camera"
 	"otto/system/input"
 	"otto/system/physics"
 	"otto/system/renderer"
 	"runtime"
 	"time"
 
+	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/anthdm/hollywood/actor"
 )
 
@@ -31,7 +32,7 @@ func main() {
 	rendererPID := e.Spawn(renderer.New(), "renderer")
 	physicsPID := e.Spawn(physics.New(), "physics")
 
-	playerPID := e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
+	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
 
 	e.Spawn(cube.NewCube(physicsPID, rendererPID, inputPID), "test_cube")
 
@@ -55,9 +56,15 @@ func main() {
 	}
 	defer modelManager.Cleanup()
 
-	tickRate := 64
+	tickRate := 64 // Increased from 64 for smoother input processing
 	tickInterval := time.Second / time.Duration(tickRate)
 	latestTick := time.Now()
+
+	// FPS tracking variables
+	var lastFPSUpdate time.Time
+	var currentFPS float64
+	var frameTimes []float64
+	maxFrameTimes := 60 // Keep last 60 frame times for averaging
 
 	// TODO: Add cancelation context
 	go func() {
@@ -74,18 +81,32 @@ func main() {
 	}()
 
 	window.Run(func(deltaTime float64) {
-		// Request camera data
-		cameraResp := e.Request(playerPID, camera.RequestCamera{}, 10*time.Millisecond)
-		cameraRes, err := cameraResp.Result()
-		if err != nil {
-			log.Printf("failed to request camera: %v", err)
-			return
+		// Track frame time for FPS calculation
+		if len(frameTimes) >= maxFrameTimes {
+			frameTimes = frameTimes[1:]
 		}
-		camera, ok := cameraRes.(camera.ResponseCamera)
-		if !ok {
-			log.Printf("failed to cast camera response: %v", cameraRes)
-			return
+		frameTimes = append(frameTimes, deltaTime)
+
+		// Update FPS every second
+		now := time.Now()
+		if now.Sub(lastFPSUpdate) >= time.Second {
+			if len(frameTimes) > 0 {
+				totalTime := 0.0
+				for _, ft := range frameTimes {
+					totalTime += ft
+				}
+				averageFrameTime := totalTime / float64(len(frameTimes))
+				currentFPS = 1.0 / averageFrameTime
+			}
+			lastFPSUpdate = now
 		}
+
+		// Render FPS overlay
+		imgui.Begin("Performance")
+		imgui.Text(fmt.Sprintf("FPS: %.1f", currentFPS))
+		imgui.Text(fmt.Sprintf("Frame Time: %.3f ms", deltaTime*1000))
+		imgui.Text(fmt.Sprintf("Tick Rate: %d Hz", tickRate))
+		imgui.End()
 
 		// Request entities from renderer
 		resp := e.Request(rendererPID, renderer.RequestEntities{}, 10*time.Millisecond)
@@ -96,15 +117,15 @@ func main() {
 			return
 		}
 
-		entities, ok := res.(renderer.EntitiesResponse)
+		response, ok := res.(renderer.EntitiesResponse)
 		if !ok {
 			log.Printf("failed to cast entities response: %v", res)
 			return
 		}
 
 		// Render entities using OpenGL
-		for _, entity := range entities.Entities {
-			otto.RenderEntity(shaderManager, modelManager, &entity, &camera.Camera)
+		for _, entity := range response.Entities {
+			otto.RenderEntity(shaderManager, modelManager, &entity, &response.Camera)
 		}
 	})
 }

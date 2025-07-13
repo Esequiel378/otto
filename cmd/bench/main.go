@@ -93,10 +93,6 @@ func (c *MockCamera) Receive(ctx *actor.Context) {
 	switch ctx.Message().(type) {
 	case actor.Initialized:
 		log.Printf("MockCamera initialized")
-	case system.RequestCamera:
-		ctx.Respond(system.ResponseCamera{
-			Camera: c.camera,
-		})
 	}
 }
 

@@ -3,7 +3,6 @@ package player
 import (
 	"otto/system/input"
 
-	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/anthdm/hollywood/actor"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -20,32 +19,37 @@ func (h *InputPlayerMovement) GetPID() *actor.PID {
 	return h.PID
 }
 
-// Process handles player movement input
-func (h *InputPlayerMovement) Process() bool {
+// Process handles player movement input using the input state
+func (h *InputPlayerMovement) Process(state *input.InputState, captureKeyboard, captureMouse bool) bool {
 	h.Velocity = mgl64.Vec3{} // Reset velocity
 
+	// Skip keyboard input if UI wants to capture it
+	if captureKeyboard {
+		return false
+	}
+
 	// Process keyboard input - Allow multiple keys to be pressed simultaneously
-	if imgui.IsKeyDown(imgui.KeyW) {
+	if state.IsKeyPressed(input.KeyW) {
 		h.Velocity = h.Velocity.Add(mgl64.Vec3{0, 0, 1}) // Forward (Z+)
 	}
 
-	if imgui.IsKeyDown(imgui.KeyS) {
+	if state.IsKeyPressed(input.KeyS) {
 		h.Velocity = h.Velocity.Add(mgl64.Vec3{0, 0, -1}) // Backward (Z-)
 	}
 
-	if imgui.IsKeyDown(imgui.KeyA) {
+	if state.IsKeyPressed(input.KeyA) {
 		h.Velocity = h.Velocity.Add(mgl64.Vec3{1, 0, 0}) // Left (X+)
 	}
 
-	if imgui.IsKeyDown(imgui.KeyD) {
+	if state.IsKeyPressed(input.KeyD) {
 		h.Velocity = h.Velocity.Add(mgl64.Vec3{-1, 0, 0}) // Right (X-)
 	}
 
-	if imgui.IsKeyDown(imgui.KeySpace) {
+	if state.IsKeyPressed(input.KeySpace) {
 		h.Velocity = h.Velocity.Add(mgl64.Vec3{0, -1, 0}) // Up (Y-)
 	}
 
-	if imgui.IsKeyDown(imgui.KeyLeftShift) {
+	if state.IsKeyPressed(input.KeyLeftShift) {
 		h.Velocity = h.Velocity.Add(mgl64.Vec3{0, 1, 0}) // Down (Y+)
 	}
 
@@ -55,71 +59,4 @@ func (h *InputPlayerMovement) Process() bool {
 	}
 
 	return h.Velocity != (mgl64.Vec3{})
-}
-
-// InputPlayerCamera handles camera movement input
-type InputPlayerCamera struct {
-	PID      *actor.PID
-	Rotation mgl64.Vec2 // Pitch, Yaw
-	Zoom     float64
-}
-
-// GetPID returns the PID of the input context
-func (c *InputPlayerCamera) GetPID() *actor.PID {
-	return c.PID
-}
-
-// Process handles camera control input
-func (c *InputPlayerCamera) Process() bool {
-	// Reset state at the beginning
-	c.Rotation = mgl64.Vec2{}
-	c.Zoom = 0.0
-
-	// Check for camera control keys
-	rotation := mgl64.Vec2{}
-	zoom := 0.0
-
-	// Get mouse input
-	io := imgui.CurrentIO()
-	if io == nil {
-		return false
-	}
-
-	// Check if right mouse button is held down for camera rotation
-	rightMouseDown := imgui.IsMouseDown(1) // Right mouse button
-
-	if rightMouseDown {
-		// Get mouse delta for rotation
-		mouseDelta := io.MouseDelta()
-		deltaX := float64(mouseDelta.X)
-		deltaY := float64(mouseDelta.Y)
-
-		// Apply mouse sensitivity
-		sensitivity := 0.1
-		rotation[0] = deltaY * sensitivity // Pitch (Y axis)
-		rotation[1] = deltaX * sensitivity // Yaw (X axis)
-	}
-
-	// Zoom controls with mouse wheel (always process, not just when right mouse is down)
-	mouseWheel := io.MouseWheel()
-	if mouseWheel != 0 {
-		zoom = float64(mouseWheel) * 0.1
-	}
-
-	// Also support keyboard zoom controls as fallback
-	plusPressed := imgui.IsKeyDown(imgui.KeyEqual)
-	minusPressed := imgui.IsKeyDown(imgui.KeyMinus)
-
-	if plusPressed {
-		zoom += 1.0 // Zoom in
-	}
-	if minusPressed {
-		zoom -= 1.0 // Zoom out
-	}
-
-	// Update state
-	c.Rotation = rotation
-	c.Zoom = zoom
-
-	return rightMouseDown || c.Rotation != (mgl64.Vec2{}) || c.Zoom != 0.0
 }

@@ -13,7 +13,10 @@ import (
 
 type Player struct {
 	*otto.Entity
-	camera *camera.Camera
+	cameraPID   *actor.PID
+	rendererPID *actor.PID
+	physicsPID  *actor.PID
+	inputPID    *actor.PID
 }
 
 var _ actor.Receiver = (*Player)(nil)
@@ -21,26 +24,29 @@ var _ actor.Receiver = (*Player)(nil)
 func NewPlayer(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
 		return &Player{
-			Entity: otto.NewEntity(physicsPID, nil, inputPID),
+			rendererPID: rendererPID,
+			physicsPID:  physicsPID,
+			inputPID:    inputPID,
+			Entity:      otto.NewEntity(physicsPID, nil, inputPID),
 		}
 	}
 }
 
 func (p *Player) Receive(ctx *actor.Context) {
 	defer p.Entity.Receive(ctx)
-	defer p.camera.Receive(ctx)
 
 	switch msg := ctx.Message().(type) {
 	case actor.Initialized:
-		p.camera = camera.NewCamera(nil, p.RendererPID())
+		p.cameraPID = ctx.SpawnChild(camera.New(p.physicsPID, p.rendererPID, p.inputPID), "camera")
 		input.RegisterInputs(
 			ctx,
-			p.InputPID(),
+			p.inputPID,
 			&InputPlayerMovement{PID: ctx.PID()},
-			&InputPlayerCamera{PID: ctx.PID()},
 		)
 	case input.EventInput:
 		p.HandleInput(ctx, msg)
+	case physics.EventRigidBodyTransform:
+		ctx.Forward(p.cameraPID)
 	}
 }
 
@@ -57,20 +63,10 @@ func (p *Player) HandleInput(ctx *actor.Context, event input.EventInput) {
 			Add(up.Mul(input.Velocity.Y())).
 			Add(front.Mul(input.Velocity.Z()))
 
-		ctx.Send(p.PhysicsPID(), physics.EventRigidBodyUpdate{
+		ctx.Send(p.physicsPID, physics.EventRigidBodyUpdate{
 			PID:             ctx.PID(),
 			Velocity:        velocity,
 			AngularVelocity: mgl64.Vec3{}, // No rotation for movement input
-		})
-	case *InputPlayerCamera:
-		ctx.Send(p.PhysicsPID(), physics.EventRigidBodyUpdate{
-			PID: ctx.PID(),
-			// Convert 2D rotation (pitch, yaw) to 3D angular velocity
-			AngularVelocity: mgl64.Vec3{
-				input.Rotation[0],
-				input.Rotation[1],
-				0,
-			},
 		})
 	}
 }

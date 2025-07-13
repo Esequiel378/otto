@@ -45,6 +45,9 @@ func NewSDLBackendWithOpenGL(width, height int, title string) (*SDLWindow, error
 	imgui.CurrentIO().SetConfigFlags(flags)
 	imgui.CurrentIO().SetIniFilename("/.imgui.ini")
 
+	// Configure ImGui to capture mouse movement for delta calculation
+	// Note: Mouse delta should be captured automatically by the backend
+
 	if err := gl.Init(); err != nil {
 		return nil, fmt.Errorf("failed to initialize OpenGL: %w", err)
 	}
