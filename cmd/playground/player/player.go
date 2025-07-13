@@ -21,7 +21,7 @@ var _ actor.Receiver = (*Player)(nil)
 func NewPlayer(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
 		return &Player{
-			Entity: otto.NewEntity(physicsPID, rendererPID, inputPID),
+			Entity: otto.NewEntity(physicsPID, nil, inputPID),
 		}
 	}
 }

@@ -1,7 +1,6 @@
 package input
 
 import (
-	"log"
 	"otto/system"
 
 	"github.com/AllenDang/cimgui-go/imgui"
@@ -31,10 +30,8 @@ func (ia *InputActor) Receive(ctx *actor.Context) {
 		// Subscribe to tick events when the actor is initialized
 		ctx.Engine().Subscribe(ctx.PID())
 	case system.Tick:
-		// log.Printf("processing %d input contexts", len(ia.contexts))
 		ia.processAllInput(ctx)
 	case EventRegisterInputs:
-		log.Printf("registering %d input contexts", len(msg.Contexts))
 		for _, context := range msg.Contexts {
 			ia.contexts[context.GetPID()] = append(ia.contexts[context.GetPID()], context)
 			ia.inputStates[context.GetPID()] = append(ia.inputStates[context.GetPID()], false)
@@ -81,17 +78,10 @@ func (ia *InputActor) processAllInput(ctx *actor.Context) {
 
 			// Check if state has changed
 			stateChanged := hasInput != wasPressed
-
-			// For continuous input contexts (like camera), always broadcast when there's input
-			// For discrete input contexts (like movement), only broadcast on state changes
-			shouldBroadcast := stateChanged
-
-			// Broadcast if needed
-			if shouldBroadcast {
+			if stateChanged {
 				event := EventInput{
 					Context: context,
 				}
-				log.Printf("broadcasting input event to %v: %v", pid, event)
 				ctx.Send(pid, event)
 			}
 

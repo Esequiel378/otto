@@ -104,7 +104,6 @@ func main() {
 
 		// Render entities using OpenGL
 		for _, entity := range entities.Entities {
-			log.Printf("rendering entity: %v", entity)
 			otto.RenderEntity(shaderManager, modelManager, &entity, &camera.Camera)
 		}
 	})

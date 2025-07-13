@@ -2,6 +2,7 @@ package otto
 
 import (
 	"log"
+	"math"
 	"otto/manager"
 	"otto/system"
 	"otto/system/physics"
@@ -13,21 +14,21 @@ import (
 
 // RenderEntity renders an entity using OpenGL 4.1 core profile
 func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.ModelManager, entity *physics.EntityRigidBody, camera *system.Camera) {
+	// Skip rendering if no model name is specified (invisible entities like player, camera)
+	if entity.ModelName == "" {
+		return
+	}
+
 	shaderProgram, err := shaderManager.Program("camera")
 	if err != nil {
 		log.Printf("Failed to get shader program: %v", err)
 		return
 	}
 
-	// Get the model (default to cube if not specified)
-	modelName := "cube"
-	if entity.ModelName != "" {
-		modelName = entity.ModelName
-	}
-
-	model, err := modelManager.Model(modelName)
+	// Get the model
+	model, err := modelManager.Model(entity.ModelName)
 	if err != nil {
-		log.Printf("Failed to get model %s: %v", modelName, err)
+		log.Printf("Failed to get model %s: %v", entity.ModelName, err)
 		return
 	}
 
@@ -52,8 +53,26 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 
 	// Create view matrix using camera data
 	cameraPos := util.Vec64ToVec32(camera.Position)
-	forward := util.Vec64ToVec32(util.Vec2FrontVector(camera.Rotation).Vec3(0))
-	up := util.Vec64ToVec32(util.Vec2UpVector(camera.Rotation).Vec3(0))
+
+	// Convert 2D rotation (pitch, yaw) to 3D direction vectors
+	// camera.Rotation is mgl64.Vec2{pitch, yaw}
+	pitch := camera.Rotation.X()
+	yaw := camera.Rotation.Y()
+
+	// Calculate forward direction from pitch and yaw
+	cosPitch := float32(math.Cos(pitch))
+	sinPitch := float32(math.Sin(pitch))
+	cosYaw := float32(math.Cos(yaw))
+	sinYaw := float32(math.Sin(yaw))
+
+	forward := mgl32.Vec3{
+		cosPitch * sinYaw,
+		sinPitch,
+		cosPitch * cosYaw,
+	}
+
+	// Calculate up vector (world up)
+	up := mgl32.Vec3{0, 1, 0}
 
 	// Calculate the target point (where camera is looking)
 	target := cameraPos.Add(forward)
