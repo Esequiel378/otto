@@ -28,7 +28,7 @@ func NewCamera(physicsPID, rendererPID, inputPID *actor.PID) *Camera {
 		physicsPID:  physicsPID,
 		rendererPID: rendererPID,
 		inputPID:    inputPID,
-		Entity:      otto.NewEntity(nil, rendererPID, inputPID),
+		Entity:      otto.NewEntity(physicsPID, rendererPID, inputPID),
 		camera: system.Camera{
 			Position: mgl64.Vec3{0, 0, -2},
 			Rotation: mgl64.Vec2{0, 0},
@@ -59,6 +59,11 @@ func (c *Camera) Receive(ctx *actor.Context) {
 		})
 	case input.EventInput:
 		c.HandleInput(ctx, msg)
+	case physics.EventPositionUpdate:
+		c.camera.Position = msg.Position
+		ctx.Send(c.rendererPID, renderer.EventUpdateCamera{
+			Camera: c.camera,
+		})
 	case physics.EventRigidBodyTransform:
 		c.camera.Position = msg.Position
 		c.camera.Rotation = mgl64.Vec2{msg.Rotation[0], msg.Rotation[1]}
@@ -71,7 +76,6 @@ func (c *Camera) Receive(ctx *actor.Context) {
 func (c *Camera) HandleInput(ctx *actor.Context, event input.EventInput) {
 	switch input := event.Context.(type) {
 	case *InputCamera:
-		// Also send to physics for entity rotation (if needed)
 		ctx.Send(c.physicsPID, physics.EventRigidBodyUpdate{
 			PID: ctx.PID(),
 			// Convert 2D rotation (pitch, yaw) to 3D angular velocity

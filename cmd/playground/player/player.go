@@ -46,7 +46,10 @@ func (p *Player) Receive(ctx *actor.Context) {
 	case input.EventInput:
 		p.HandleInput(ctx, msg)
 	case physics.EventRigidBodyTransform:
-		ctx.Forward(p.cameraPID)
+		ctx.Send(p.cameraPID, physics.EventPositionUpdate{
+			PID:      ctx.PID(),
+			Position: msg.Position,
+		})
 	}
 }
 

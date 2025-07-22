@@ -19,3 +19,7 @@ type EventRigidBodyTransform struct {
 	Position mgl64.Vec3
 	Rotation mgl64.Vec3
 }
+type EventPositionUpdate struct {
+	PID      *actor.PID
+	Position mgl64.Vec3
+}

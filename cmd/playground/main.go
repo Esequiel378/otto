@@ -56,7 +56,7 @@ func main() {
 	}
 	defer modelManager.Cleanup()
 
-	tickRate := 64 // Increased from 64 for smoother input processing
+	tickRate := 512 // Increased from 64 for smoother input processing
 	tickInterval := time.Second / time.Duration(tickRate)
 	latestTick := time.Now()
 
