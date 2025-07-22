@@ -42,7 +42,7 @@ func (c *InputCamera) Process(state *input.InputState, captureKeyboard, captureM
 		deltaY := mouseDelta.Y()
 
 		// Apply mouse sensitivity - direct input, no smoothing
-		sensitivity := 0.1
+		sensitivity := 0.2
 		rotation[0] = deltaY * sensitivity // Pitch (Y axis)
 		rotation[1] = deltaX * sensitivity // Yaw (X axis)
 	}

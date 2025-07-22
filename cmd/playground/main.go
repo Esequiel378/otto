@@ -80,6 +80,16 @@ func main() {
 		}
 	}()
 
+	go func() {
+		ticker := time.NewTicker(time.Second / time.Duration(10_000))
+		defer ticker.Stop()
+
+		// The broadcast overhead makes this a bit less accurate than the tick rate, but it's good enough for now.
+		for range ticker.C {
+			e.Send(inputPID, system.TickInput{})
+		}
+	}()
+
 	window.Run(func(deltaTime float64) {
 		// Track frame time for FPS calculation
 		if len(frameTimes) >= maxFrameTimes {

@@ -31,7 +31,7 @@ func (ia *InputActor) Receive(ctx *actor.Context) {
 	case actor.Initialized:
 		// Subscribe to tick events when the actor is initialized
 		ctx.Engine().Subscribe(ctx.PID())
-	case system.Tick:
+	case system.TickInput:
 		ia.processAllInput(ctx)
 	case EventRegisterInputs:
 		for _, context := range msg.Contexts {
