@@ -54,8 +54,21 @@ func NewSDLBackendWithOpenGL(width, height int, title string) (*SDLWindow, error
 
 	gl.Enable(gl.DEPTH_TEST)
 	gl.DepthFunc(gl.LESS)
+	gl.DepthMask(true)
 	gl.Enable(gl.BLEND)
 	gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+
+	// Enable depth clamping to prevent z-fighting near the near plane
+	gl.Enable(gl.DEPTH_CLAMP)
+
+	// Enable face culling to only render front faces
+	gl.Enable(gl.CULL_FACE)
+	gl.CullFace(gl.BACK)
+	gl.FrontFace(gl.CCW)
+
+	// Set clear color and depth values
+	gl.ClearColor(0.2, 0.3, 0.3, 1.0)
+	gl.ClearDepth(1.0)
 
 	window := &SDLWindow{
 		Backend:  currBackend,
@@ -69,7 +82,11 @@ func NewSDLBackendWithOpenGL(width, height int, title string) (*SDLWindow, error
 
 func (w *SDLWindow) Run(f func(deltaTime float64)) {
 	w.Backend.Run(func() {
+		// Clear both color and depth buffers completely
 		gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+
+		// Ensure depth buffer is properly initialized
+		gl.ClearDepth(1.0)
 
 		currentTime := time.Now()
 		deltaTime := currentTime.Sub(w.lastTime).Seconds()

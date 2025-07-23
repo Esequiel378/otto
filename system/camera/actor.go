@@ -28,7 +28,7 @@ func NewCamera(physicsPID, rendererPID, inputPID *actor.PID) *Camera {
 		physicsPID:  physicsPID,
 		rendererPID: rendererPID,
 		inputPID:    inputPID,
-		Entity:      otto.NewEntity(physicsPID, rendererPID, inputPID),
+		Entity:      otto.NewEntity(physicsPID, nil, inputPID),
 		camera: system.Camera{
 			Position: mgl64.Vec3{0, 0, -2},
 			Rotation: mgl64.Vec2{0, 0},
@@ -65,7 +65,6 @@ func (c *Camera) Receive(ctx *actor.Context) {
 			Camera: c.camera,
 		})
 	case physics.EventRigidBodyTransform:
-		c.camera.Position = msg.Position
 		c.camera.Rotation = mgl64.Vec2{msg.Rotation[0], msg.Rotation[1]}
 		ctx.Send(c.rendererPID, renderer.EventUpdateCamera{
 			Camera: c.camera,
