@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"otto"
@@ -56,36 +57,50 @@ func main() {
 	}
 	defer modelManager.Cleanup()
 
-	serverTickRate := 512
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	// TODO: Add cancelation context
-	go func() {
+	serverTickRate := 64
+	clientTickRate := 1_000
+
+	go func(ctx context.Context) {
 		tickInterval := time.Second / time.Duration(serverTickRate)
 		latestTick := time.Now()
 
 		ticker := time.NewTicker(tickInterval)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			now := time.Now()
-			deltaTime := now.Sub(latestTick).Seconds()
-			latestTick = now
-			e.BroadcastEvent(system.Tick{DeltaTime: deltaTime})
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				now := time.Now()
+				deltaTime := now.Sub(latestTick).Seconds()
+				latestTick = now
+				e.BroadcastEvent(system.ServerTick{DeltaTime: deltaTime})
+			}
 		}
-	}()
+	}(ctx)
 
-	go func() {
-		ticker := time.NewTicker(time.Second / 1_000)
+	go func(ctx context.Context) {
+		ticker := time.NewTicker(time.Second / time.Duration(clientTickRate))
 		defer ticker.Stop()
 		var latestTick time.Time
 
-		for range ticker.C {
-			now := time.Now()
-			deltaTime := now.Sub(latestTick).Seconds()
-			latestTick = now
-			e.Send(inputPID, system.TickInput{DeltaTime: deltaTime})
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				now := time.Now()
+				deltaTime := now.Sub(latestTick).Seconds()
+				latestTick = now
+				// TODO: Maybe we should broadcast this instead of sending it to the input PID?
+				e.Send(inputPID, system.ClientTick{DeltaTime: deltaTime})
+			}
 		}
-	}()
+	}(ctx)
 
 	// FPS tracking variables
 	var lastFPSUpdate time.Time

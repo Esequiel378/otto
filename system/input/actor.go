@@ -28,7 +28,7 @@ func New() actor.Producer {
 
 func (ia *InputActor) Receive(ctx *actor.Context) {
 	switch msg := ctx.Message().(type) {
-	case system.TickInput:
+	case system.ClientTick:
 		ia.processAllInput(ctx, msg.DeltaTime)
 	case EventRegisterInputs:
 		for _, context := range msg.Contexts {

@@ -2,11 +2,11 @@ package system
 
 import "github.com/go-gl/mathgl/mgl64"
 
-type TickInput struct {
+type ClientTick struct {
 	DeltaTime float64
 }
 
-type Tick struct {
+type ServerTick struct {
 	DeltaTime float64
 }
 

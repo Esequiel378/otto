@@ -35,13 +35,13 @@ func (p *Physics) Receive(ctx *actor.Context) {
 		entity.Velocity = msg.Velocity
 		entity.AngularVelocity = msg.AngularVelocity
 		p.entities[msg.PID] = entity
-	case system.Tick:
+	case system.ServerTick:
 		p.Update(ctx)
 	}
 }
 
 func (p *Physics) Update(ctx *actor.Context) {
-	tick, ok := ctx.Message().(system.Tick)
+	tick, ok := ctx.Message().(system.ServerTick)
 	if !ok {
 		panic("tick message not found")
 	}
