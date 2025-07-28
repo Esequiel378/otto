@@ -2,7 +2,6 @@ package system
 
 import "github.com/go-gl/mathgl/mgl64"
 
-type TickInput struct{}
 type Tick struct {
 	DeltaTime float64
 }

@@ -18,6 +18,7 @@ type Camera struct {
 	rendererPID *actor.PID
 	inputPID    *actor.PID
 	camera      system.Camera
+	parentPID   *actor.PID
 }
 
 var _ actor.Receiver = (*Camera)(nil)
@@ -40,7 +41,7 @@ func NewCamera(physicsPID, rendererPID, inputPID *actor.PID) *Camera {
 // New creates a new camera configuration that must be used as an actor
 func New(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
-		return NewCamera(physicsPID, rendererPID, inputPID)
+		return NewCamera(nil, rendererPID, inputPID)
 	}
 }
 
@@ -51,7 +52,6 @@ func (c *Camera) Receive(ctx *actor.Context) {
 	case actor.Initialized:
 		// Initialize InputCamera with default Euler angles (like reference code)
 		inputCamera := NewInputCamera(ctx.PID())
-
 		input.RegisterInputs(
 			ctx,
 			c.inputPID,
@@ -67,12 +67,6 @@ func (c *Camera) Receive(ctx *actor.Context) {
 		ctx.Send(c.rendererPID, renderer.EventUpdateCamera{
 			Camera: c.camera,
 		})
-	case physics.EventRigidBodyTransform:
-		c.camera.Rotation.Add(mgl64.Vec2{msg.Rotation.X(), msg.Rotation.Y()})
-		c.camera.Position = c.Entity.Position
-		ctx.Send(c.rendererPID, renderer.EventUpdateCamera{
-			Camera: c.camera,
-		})
 	}
 }
 
@@ -82,9 +76,18 @@ func (c *Camera) HandleInput(ctx *actor.Context, event input.EventInput) {
 		// Update camera rotation with Euler angles
 		c.camera.Rotation = c.camera.Rotation.Add(mgl64.Vec2{input.GetPitch(), input.GetYaw()})
 
+		// TODO: This should be sent to the physics system too
+
 		// Send updated camera to renderer
 		ctx.Send(c.rendererPID, renderer.EventUpdateCamera{
 			Camera: c.camera,
 		})
+
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), physics.EventRotationUpdate{
+				PID:      ctx.PID(),
+				Rotation: c.camera.Rotation.Vec3(0),
+			})
+		}
 	}
 }

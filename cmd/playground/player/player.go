@@ -5,6 +5,7 @@ import (
 	"otto/cmd/playground/camera"
 	"otto/system/input"
 	"otto/system/physics"
+	"otto/system/renderer"
 	"otto/util"
 
 	"github.com/anthdm/hollywood/actor"
@@ -33,8 +34,6 @@ func NewPlayer(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 }
 
 func (p *Player) Receive(ctx *actor.Context) {
-	defer p.Entity.Receive(ctx)
-
 	switch msg := ctx.Message().(type) {
 	case actor.Initialized:
 		p.cameraPID = ctx.SpawnChild(camera.New(p.physicsPID, p.rendererPID, p.inputPID), "camera")
@@ -43,8 +42,21 @@ func (p *Player) Receive(ctx *actor.Context) {
 			p.inputPID,
 			&InputPlayerMovement{PID: ctx.PID()},
 		)
+
+		// Send initialization to physics system
+		ctx.Send(p.physicsPID, physics.EventRigidBodyRegister{
+			PID:             ctx.PID(),
+			EntityRigidBody: p.ToRigidBody(),
+		})
+		// Send initialization to renderer system
+		ctx.Send(p.rendererPID, renderer.EventEntityRegister{
+			PID:             ctx.PID(),
+			EntityRigidBody: p.ToRigidBody(),
+		})
 	case input.EventInput:
 		p.HandleInput(ctx, msg)
+	case physics.EventRotationUpdate:
+		p.Entity.Rotation = msg.Rotation
 	case physics.EventRigidBodyTransform:
 		ctx.Send(p.cameraPID, physics.EventPositionUpdate{
 			PID:      ctx.PID(),

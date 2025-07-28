@@ -71,13 +71,11 @@ func main() {
 		ticker := time.NewTicker(tickInterval)
 		defer ticker.Stop()
 
-		// The broadcast overhead makes this a bit less accurate than the tick rate, but it's good enough for now.
 		for range ticker.C {
 			now := time.Now()
 			deltaTime := now.Sub(latestTick).Seconds()
 			latestTick = now
 			e.BroadcastEvent(system.Tick{DeltaTime: deltaTime})
-			e.Send(inputPID, system.TickInput{})
 		}
 	}()
 
