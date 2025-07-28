@@ -20,7 +20,7 @@ func (h *InputPlayerMovement) GetPID() *actor.PID {
 }
 
 // Process handles player movement input using the input state
-func (h *InputPlayerMovement) Process(state *input.InputState, captureKeyboard, captureMouse bool) bool {
+func (h *InputPlayerMovement) Process(deltaTime float64, state *input.InputState, captureKeyboard, captureMouse bool) bool {
 	h.Velocity = mgl64.Vec3{} // Reset velocity
 
 	// Skip keyboard input if UI wants to capture it

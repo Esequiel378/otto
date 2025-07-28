@@ -56,18 +56,13 @@ func main() {
 	}
 	defer modelManager.Cleanup()
 
-	tickRate := 512 // Increased from 64 for smoother input processing
-	tickInterval := time.Second / time.Duration(tickRate)
-	latestTick := time.Now()
-
-	// FPS tracking variables
-	var lastFPSUpdate time.Time
-	var currentFPS float64
-	var frameTimes []float64
-	maxFrameTimes := 60 // Keep last 60 frame times for averaging
+	serverTickRate := 512
 
 	// TODO: Add cancelation context
 	go func() {
+		tickInterval := time.Second / time.Duration(serverTickRate)
+		latestTick := time.Now()
+
 		ticker := time.NewTicker(tickInterval)
 		defer ticker.Stop()
 
@@ -78,6 +73,25 @@ func main() {
 			e.BroadcastEvent(system.Tick{DeltaTime: deltaTime})
 		}
 	}()
+
+	go func() {
+		ticker := time.NewTicker(time.Second / 1_000)
+		defer ticker.Stop()
+		var latestTick time.Time
+
+		for range ticker.C {
+			now := time.Now()
+			deltaTime := now.Sub(latestTick).Seconds()
+			latestTick = now
+			e.Send(inputPID, system.TickInput{DeltaTime: deltaTime})
+		}
+	}()
+
+	// FPS tracking variables
+	var lastFPSUpdate time.Time
+	var currentFPS float64
+	var frameTimes []float64
+	maxFrameTimes := 60 // Keep last 60 frame times for averaging
 
 	window.Run(func(deltaTime float64) {
 		// Track frame time for FPS calculation
@@ -104,7 +118,7 @@ func main() {
 		imgui.Begin("Performance")
 		imgui.Text(fmt.Sprintf("FPS: %.1f", currentFPS))
 		imgui.Text(fmt.Sprintf("Frame Time: %.3f ms", deltaTime*1000))
-		imgui.Text(fmt.Sprintf("Tick Rate: %d Hz", tickRate))
+		imgui.Text(fmt.Sprintf("Tick Rate: %d Hz", serverTickRate))
 		imgui.End()
 
 		// Request entities from renderer

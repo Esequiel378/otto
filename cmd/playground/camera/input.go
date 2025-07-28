@@ -55,7 +55,7 @@ func (c *InputCamera) GetFrontVector() mgl64.Vec3 {
 }
 
 // Process handles camera control input using the input state
-func (c *InputCamera) Process(state *input.InputState, captureKeyboard, captureMouse bool) bool {
+func (c *InputCamera) Process(deltaTime float64, state *input.InputState, captureKeyboard, captureMouse bool) bool {
 	// Reset zoom at the beginning
 	c.Zoom = 0.0
 
@@ -76,12 +76,10 @@ func (c *InputCamera) Process(state *input.InputState, captureKeyboard, captureM
 		// Update last position
 		c.lastRotation = mgl64.Vec2{deltaX, deltaY}
 
-		// Only process if there's actual movement
 		if c.lastRotation.X() != 0 || c.lastRotation.Y() != 0 {
-			// Apply mouse sensitivity - direct input, no smoothing
-			sensitivity := 0.001
-			c.yaw += offsetX * sensitivity
-			c.pitch += offsetY * sensitivity
+			sensitivity := 0.5
+			c.yaw += offsetX * sensitivity * deltaTime
+			c.pitch += offsetY * sensitivity * deltaTime
 
 			// Clamp pitch between -89 and 89 degrees (like reference code)
 			if c.pitch > 89.0 {
@@ -101,7 +99,8 @@ func (c *InputCamera) Process(state *input.InputState, captureKeyboard, captureM
 	if !captureMouse {
 		mouseWheel := state.GetMouseWheel()
 		if mouseWheel != 0 {
-			c.Zoom = mouseWheel * 0.1
+			// Apply deltaTime to zoom for consistent speed
+			c.Zoom = mouseWheel * 0.1 * deltaTime
 		}
 	}
 

@@ -28,11 +28,8 @@ func New() actor.Producer {
 
 func (ia *InputActor) Receive(ctx *actor.Context) {
 	switch msg := ctx.Message().(type) {
-	case actor.Initialized:
-		// Subscribe to tick events when the actor is initialized
-		ctx.Engine().Subscribe(ctx.PID())
-	case system.Tick:
-		ia.processAllInput(ctx)
+	case system.TickInput:
+		ia.processAllInput(ctx, msg.DeltaTime)
 	case EventRegisterInputs:
 		for _, context := range msg.Contexts {
 			ia.contexts[context.GetPID()] = append(ia.contexts[context.GetPID()], context)
@@ -42,7 +39,7 @@ func (ia *InputActor) Receive(ctx *actor.Context) {
 }
 
 // processAllInput processes all registered input contexts and sends events
-func (ia *InputActor) processAllInput(ctx *actor.Context) {
+func (ia *InputActor) processAllInput(ctx *actor.Context, deltaTime float64) {
 	// Update input state from the provider
 	if err := ia.inputProvider.Update(); err != nil {
 		log.Printf("Input provider update error: %v", err)
@@ -55,7 +52,7 @@ func (ia *InputActor) processAllInput(ctx *actor.Context) {
 	for pid, contexts := range ia.contexts {
 		for idx, context := range contexts {
 			// Process the context to get current state, passing capture information
-			hasInput := context.Process(inputState, inputState.WantCaptureKeyboard(), inputState.WantCaptureMouse())
+			hasInput := context.Process(deltaTime, inputState, inputState.WantCaptureKeyboard(), inputState.WantCaptureMouse())
 
 			// Get previous state
 			states, exists := ia.inputStates[pid]
