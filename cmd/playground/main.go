@@ -17,6 +17,7 @@ import (
 
 	"github.com/AllenDang/cimgui-go/imgui"
 	"github.com/anthdm/hollywood/actor"
+	"github.com/go-gl/mathgl/mgl64"
 )
 
 func init() {
@@ -35,7 +36,22 @@ func main() {
 
 	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
 
-	e.Spawn(cube.NewCube(physicsPID, rendererPID, inputPID), "test_cube")
+	// Spawn 100 cubes in a 10x10 grid with a gap of 1 cube between them
+	// Each cube is 1 unit, so we place them 2 units apart (1 unit for cube + 1 unit gap)
+	// Using batch rendering for better performance
+	for i := 0; i < 10; i++ {
+		for j := 0; j < 10; j++ {
+			e.Spawn(
+				cube.NewCubeWithPosition(
+					physicsPID,
+					rendererPID,
+					inputPID,
+					mgl64.Vec3{float64(i * 2), 0, float64(j * 2)}, // 2 units apart for 1 unit gap
+				),
+				fmt.Sprintf("cube_%d_%d", i, j),
+			)
+		}
+	}
 
 	window, err := otto.NewSDLBackendWithOpenGL(1200, 900, "Hello from cimgui-go")
 	if err != nil {
@@ -129,13 +145,6 @@ func main() {
 			lastFPSUpdate = now
 		}
 
-		// Render FPS overlay
-		imgui.Begin("Performance")
-		imgui.Text(fmt.Sprintf("FPS: %.1f", currentFPS))
-		imgui.Text(fmt.Sprintf("Frame Time: %.3f ms", deltaTime*1000))
-		imgui.Text(fmt.Sprintf("Tick Rate: %d Hz", serverTickRate))
-		imgui.End()
-
 		// Request entities from renderer
 		resp := e.Request(rendererPID, renderer.RequestEntities{}, 10*time.Millisecond)
 
@@ -151,9 +160,19 @@ func main() {
 			return
 		}
 
-		// Render entities using OpenGL
-		for _, entity := range response.Entities {
-			otto.RenderEntity(shaderManager, modelManager, &entity, &response.Camera)
+		// Render FPS overlay
+		imgui.Begin("Performance")
+		imgui.Text(fmt.Sprintf("FPS: %.1f", currentFPS))
+		imgui.Text(fmt.Sprintf("Frame Time: %.3f ms", deltaTime*1000))
+		imgui.Text(fmt.Sprintf("Tick Rate: %d Hz", serverTickRate))
+		imgui.Text(fmt.Sprintf("Entities: %d", len(response.Entities)))
+		imgui.End()
+
+		// Render entities using OpenGL batch rendering for better performance
+		entities := make([]*physics.EntityRigidBody, len(response.Entities))
+		for i := range response.Entities {
+			entities[i] = &response.Entities[i]
 		}
+		otto.RenderEntityBatch(shaderManager, modelManager, entities, &response.Camera)
 	})
 }

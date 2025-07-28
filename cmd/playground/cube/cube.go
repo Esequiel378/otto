@@ -21,3 +21,13 @@ func NewCube(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 		return &Cube{Entity: entity}
 	}
 }
+
+func NewCubeWithPosition(physicsPID, rendererPID, inputPID *actor.PID, position mgl64.Vec3) actor.Producer {
+	return func() actor.Receiver {
+		entity := otto.NewEntity(physicsPID, rendererPID, inputPID)
+		entity.ModelName = "cube"
+		entity.Position = position
+		entity.Scale = mgl64.Vec3{1, 1, 1}
+		return &Cube{Entity: entity}
+	}
+}
