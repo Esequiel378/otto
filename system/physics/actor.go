@@ -47,7 +47,9 @@ func (p *Physics) Update(ctx *actor.Context) {
 	}
 
 	for pid, entity := range p.entities {
-		p.UpdatePosition(ctx, pid, entity, tick.DeltaTime)
+		if entity.Velocity.Len() > 0 {
+			p.UpdatePosition(ctx, pid, entity, tick.DeltaTime)
+		}
 	}
 }
 

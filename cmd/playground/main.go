@@ -39,8 +39,8 @@ func main() {
 	// Spawn 100 cubes in a 10x10 grid with a gap of 1 cube between them
 	// Each cube is 1 unit, so we place them 2 units apart (1 unit for cube + 1 unit gap)
 	// Using batch rendering for better performance
-	for i := 0; i < 10; i++ {
-		for j := 0; j < 10; j++ {
+	for i := 0; i < 100; i++ {
+		for j := 0; j < 100; j++ {
 			e.Spawn(
 				cube.NewCubeWithPosition(
 					physicsPID,
@@ -76,7 +76,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	serverTickRate := 64
+	serverTickRate := 512
 	clientTickRate := 1_000
 
 	go func(ctx context.Context) {
@@ -173,6 +173,7 @@ func main() {
 		for i := range response.Entities {
 			entities[i] = &response.Entities[i]
 		}
+
 		otto.RenderEntityBatch(shaderManager, modelManager, entities, &response.Camera)
 	})
 }

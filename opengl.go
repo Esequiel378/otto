@@ -92,7 +92,7 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	if fov > 90.0 {
 		fov = 90.0
 	}
-	projection := mgl32.Perspective(mgl32.DegToRad(fov), 1200.0/900.0, 0.1, 100.0)
+	projection := mgl32.Perspective(mgl32.DegToRad(fov), 1200.0/900.0, 0.1, 10_000.0)
 
 	// Set uniform matrices
 	gl.UniformMatrix4fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("model\x00")), 1, false, &modelMatrix[0])
@@ -102,7 +102,7 @@ func RenderEntity(shaderManager *manager.ShaderManager, modelManager *manager.Mo
 	// Set material color (white)
 	gl.Uniform4f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("color\x00")), 1.0, 1.0, 1.0, 1.0)
 
-	// Set view position
+	// Set view position (needed for both vertex and fragment shaders)
 	gl.Uniform3f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("viewPos\x00")), cameraPos.X(), cameraPos.Y(), cameraPos.Z())
 
 	// Set ambient strength
@@ -209,7 +209,7 @@ func RenderEntityBatch(shaderManager *manager.ShaderManager, modelManager *manag
 		if fov > 90.0 {
 			fov = 90.0
 		}
-		projection := mgl32.Perspective(mgl32.DegToRad(fov), 1200.0/900.0, 0.1, 100.0)
+		projection := mgl32.Perspective(mgl32.DegToRad(fov), 1200.0/900.0, 0.1, 10_000.0)
 
 		// Set view and projection uniforms once
 		gl.UniformMatrix4fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("view\x00")), 1, false, &view[0])
@@ -232,11 +232,12 @@ func RenderEntityBatch(shaderManager *manager.ShaderManager, modelManager *manag
 		gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("lightIntensities\x00")), lightIntensity)
 
 		// Render each entity in the batch
+		renderedEntities := 0
 		for _, entity := range modelEntities {
 			// Simple frustum culling: skip entities too far from camera
 			entityPos := util.Vec64ToVec32(entity.Position)
 			distance := cameraPos.Sub(entityPos).Len()
-			if distance > 50.0 { // Skip entities more than 50 units away
+			if distance > 1200.0 { // Skip entities more than 50 units away
 				continue
 			}
 
@@ -257,6 +258,7 @@ func RenderEntityBatch(shaderManager *manager.ShaderManager, modelManager *manag
 
 			// Draw the model
 			gl.DrawElements(gl.TRIANGLES, int32(len(model.Indices)), gl.UNSIGNED_INT, nil)
+			renderedEntities++
 		}
 
 		// Unbind VAO

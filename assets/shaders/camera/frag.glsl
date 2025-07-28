@@ -2,6 +2,7 @@
 
 in vec3 FragPos;
 in vec3 Normal;
+in float FaceVisible;
 
 out vec4 FragColor;
 
@@ -17,6 +18,11 @@ uniform vec3 lightColors[MAX_LIGHTS];
 uniform float lightIntensities[MAX_LIGHTS];
 
 void main() {
+    // Discard fragments for faces that are not visible
+    if (FaceVisible < 0.5) {
+        discard;
+    }
+    
     vec3 norm = normalize(Normal);
     vec3 viewDir = normalize(viewPos - FragPos);
     vec3 result = vec3(0.0);
