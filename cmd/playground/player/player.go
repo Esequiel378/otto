@@ -2,7 +2,7 @@ package player
 
 import (
 	"otto"
-	"otto/system/camera"
+	"otto/cmd/playground/camera"
 	"otto/system/input"
 	"otto/system/physics"
 	"otto/util"
