@@ -9,11 +9,10 @@ import (
 
 // InputCamera handles camera movement input using Euler angles like the reference code
 type InputCamera struct {
-	PID          *actor.PID
-	lastRotation mgl64.Vec2 // Track last mouse position for delta calculation
-	rotation     mgl64.Vec2 // Pitch, Yaw
-	fov          float64
-	sensitivity  float64
+	PID         *actor.PID
+	rotation    mgl64.Vec2 // Pitch, Yaw
+	fov         float64
+	sensitivity float64
 }
 
 var _ input.Context = (*InputCamera)(nil)
@@ -61,23 +60,19 @@ func (c *InputCamera) handleCameraRotation(deltaTime float64, state *input.Input
 	deltaX := mouseDelta.X()
 	deltaY := mouseDelta.Y()
 
-	offset := mgl64.Vec2{deltaX, deltaY}.Sub(c.lastRotation)
+	// Apply sensitivity and time delta
+	offset := mgl64.Vec2{deltaY, deltaX}.Mul(c.sensitivity * deltaTime)
+	// Note: Y first, X second because: pitch (up/down) is mouse Y, yaw (left/right) is mouse X
 
-	// Update last position
-	c.lastRotation = mgl64.Vec2{deltaX, deltaY}
+	// Update rotation
+	c.rotation = c.rotation.Add(offset)
 
-	if c.lastRotation.X() == 0 && c.lastRotation.Y() == 0 {
-		return
+	// Clamp pitch (rotation.X) between -89 and 89 degrees
+	if c.rotation.X() > 89.0 {
+		c.rotation[0] = 89.0
 	}
-
-	c.rotation = c.rotation.Add(offset.Mul(c.sensitivity * deltaTime))
-
-	// Clamp pitch between -89 and 89 degrees
-	if c.rotation.Y() > 89.0 {
-		c.rotation[1] = 89.0
-	}
-	if c.rotation.Y() < -89.0 {
-		c.rotation[1] = -89.0
+	if c.rotation.X() < -89.0 {
+		c.rotation[0] = -89.0
 	}
 }
 

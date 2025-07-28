@@ -18,7 +18,6 @@ type Camera struct {
 	rendererPID *actor.PID
 	inputPID    *actor.PID
 	camera      system.Camera
-	parentPID   *actor.PID
 }
 
 var _ actor.Receiver = (*Camera)(nil)
