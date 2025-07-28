@@ -45,8 +45,6 @@ func New(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 }
 
 func (c *Camera) Receive(ctx *actor.Context) {
-	defer c.Entity.Receive(ctx)
-
 	switch msg := ctx.Message().(type) {
 	case actor.Initialized:
 		// Initialize InputCamera with default Euler angles (like reference code)
