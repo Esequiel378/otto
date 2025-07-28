@@ -57,7 +57,7 @@ func (c *InputCamera) handleCameraRotation(deltaTime float64, state *input.Input
 	}
 
 	// Get mouse delta for rotation
-	mouseDelta := state.GetMouseDelta()
+	mouseDelta := state.MouseDelta()
 	deltaX := mouseDelta.X()
 	deltaY := mouseDelta.Y()
 
@@ -82,7 +82,7 @@ func (c *InputCamera) handleCameraRotation(deltaTime float64, state *input.Input
 }
 
 func (c *InputCamera) handleCameraZoom(deltaTime float64, state *input.InputState) {
-	mouseWheel := state.GetMouseWheel()
+	mouseWheel := state.MouseWheel()
 	if mouseWheel != 0 {
 		c.fov = mouseWheel * c.sensitivity * deltaTime
 	}

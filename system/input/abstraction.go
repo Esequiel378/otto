@@ -79,18 +79,18 @@ func (is *InputState) IsMouseButtonReleased(button MouseButton) bool {
 	return !is.mouseButtonStates[button]
 }
 
-// GetMousePosition returns the current mouse position
-func (is *InputState) GetMousePosition() mgl64.Vec2 {
+// MousePosition returns the current mouse position
+func (is *InputState) MousePosition() mgl64.Vec2 {
 	return is.mousePosition
 }
 
-// GetMouseDelta returns the mouse movement delta since last frame
-func (is *InputState) GetMouseDelta() mgl64.Vec2 {
+// MouseDelta returns the mouse movement delta since last frame
+func (is *InputState) MouseDelta() mgl64.Vec2 {
 	return is.mouseDelta
 }
 
-// GetMouseWheel returns the mouse wheel delta since last frame
-func (is *InputState) GetMouseWheel() float64 {
+// MouseWheel returns the mouse wheel delta since last frame
+func (is *InputState) MouseWheel() float64 {
 	return is.mouseWheel
 }
 
