@@ -3,8 +3,6 @@ package camera
 import (
 	"otto/system/input"
 
-	"math"
-
 	"github.com/anthdm/hollywood/actor"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -13,9 +11,9 @@ import (
 type InputCamera struct {
 	PID          *actor.PID
 	lastRotation mgl64.Vec2 // Track last mouse position for delta calculation
-	yaw          float64    // Euler angle for horizontal rotation
-	pitch        float64    // Euler angle for vertical rotation
-	Zoom         float64
+	rotation     mgl64.Vec2 // Pitch, Yaw
+	fov          float64
+	sensitivity  float64
 }
 
 var _ input.Context = (*InputCamera)(nil)
@@ -23,7 +21,8 @@ var _ input.Context = (*InputCamera)(nil)
 // NewInputCamera creates a new InputCamera with default values
 func NewInputCamera(pid *actor.PID) *InputCamera {
 	return &InputCamera{
-		PID: pid,
+		PID:         pid,
+		sensitivity: 0.5,
 	}
 }
 
@@ -32,77 +31,59 @@ func (c *InputCamera) GetPID() *actor.PID {
 	return c.PID
 }
 
-// GetYaw returns the current yaw angle
-func (c *InputCamera) GetYaw() float64 {
-	return c.yaw
-}
-
-// GetPitch returns the current pitch angle
-func (c *InputCamera) GetPitch() float64 {
-	return c.pitch
-}
-
-// GetFrontVector returns the front direction vector calculated from Euler angles
-func (c *InputCamera) GetFrontVector() mgl64.Vec3 {
-	// Calculate the new Front vector (like reference code)
-	front := mgl64.Vec3{
-		math.Cos(mgl64.DegToRad(c.yaw)) * math.Cos(mgl64.DegToRad(c.pitch)),
-		math.Sin(mgl64.DegToRad(c.pitch)),
-		math.Sin(mgl64.DegToRad(c.yaw)) * math.Cos(mgl64.DegToRad(c.pitch)),
-	}.Normalize()
-
-	return front
+func (c *InputCamera) Rotation() mgl64.Vec2 {
+	return c.rotation
 }
 
 // Process handles camera control input using the input state
 func (c *InputCamera) Process(deltaTime float64, state *input.InputState, captureKeyboard, captureMouse bool) bool {
-	// Reset zoom at the beginning
-	c.Zoom = 0.0
+	// Only process mouse input if UI doesn't want to capture it
+	if captureMouse {
+		return false
+	}
+
+	c.handleCameraRotation(deltaTime, state)
+	c.handleCameraZoom(deltaTime, state)
+
+	return c.rotation != (mgl64.Vec2{0, 0}) || c.fov != 0.0
+}
+
+func (c *InputCamera) handleCameraRotation(deltaTime float64, state *input.InputState) {
+	c.rotation = mgl64.Vec2{0, 0}
 
 	// Check if right mouse button is held down for camera rotation
-	// Only process mouse input if UI doesn't want to capture it
-	rightMouseDown := !captureMouse && state.IsMouseButtonPressed(input.MouseButtonRight)
-
-	if rightMouseDown {
-		// Get mouse delta for rotation
-		mouseDelta := state.GetMouseDelta()
-		deltaX := mouseDelta.X()
-		deltaY := mouseDelta.Y()
-
-		// Calculate offset from last position (similar to reference code)
-		offsetX := deltaX - c.lastRotation.X()
-		offsetY := c.lastRotation.Y() - deltaY
-
-		// Update last position
-		c.lastRotation = mgl64.Vec2{deltaX, deltaY}
-
-		if c.lastRotation.X() != 0 || c.lastRotation.Y() != 0 {
-			sensitivity := 0.5
-			c.yaw += offsetX * sensitivity * deltaTime
-			c.pitch += offsetY * sensitivity * deltaTime
-
-			// Clamp pitch between -89 and 89 degrees (like reference code)
-			if c.pitch > 89.0 {
-				c.pitch = 89.0
-			}
-			if c.pitch < -89.0 {
-				c.pitch = -89.0
-			}
-		} else {
-			c.yaw = 0
-			c.pitch = 0
-		}
+	if !state.IsMouseButtonPressed(input.MouseButtonRight) {
+		return
 	}
 
-	// Zoom controls with mouse wheel (always process, not just when right mouse is down)
-	// Only process mouse wheel if UI doesn't want to capture mouse
-	if !captureMouse {
-		mouseWheel := state.GetMouseWheel()
-		if mouseWheel != 0 {
-			// Apply deltaTime to zoom for consistent speed
-			c.Zoom = mouseWheel * 0.1 * deltaTime
-		}
+	// Get mouse delta for rotation
+	mouseDelta := state.GetMouseDelta()
+	deltaX := mouseDelta.X()
+	deltaY := mouseDelta.Y()
+
+	offset := mgl64.Vec2{deltaX, deltaY}.Sub(c.lastRotation)
+
+	// Update last position
+	c.lastRotation = mgl64.Vec2{deltaX, deltaY}
+
+	if c.lastRotation.X() == 0 && c.lastRotation.Y() == 0 {
+		return
 	}
 
-	return rightMouseDown || c.Zoom != 0.0
+	c.rotation = c.rotation.Add(offset.Mul(c.sensitivity * deltaTime))
+
+	// Clamp pitch between -89 and 89 degrees
+	if c.rotation.Y() > 89.0 {
+		c.rotation[1] = 89.0
+	}
+	if c.rotation.Y() < -89.0 {
+		c.rotation[1] = -89.0
+	}
+}
+
+func (c *InputCamera) handleCameraZoom(deltaTime float64, state *input.InputState) {
+	mouseWheel := state.GetMouseWheel()
+	if mouseWheel != 0 {
+		c.fov = mouseWheel * c.sensitivity * deltaTime
+	}
 }

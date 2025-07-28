@@ -56,7 +56,7 @@ func main() {
 	}
 	defer modelManager.Cleanup()
 
-	serverTickRate := 512
+	serverTickRate := 64
 
 	// TODO: Add cancelation context
 	go func() {

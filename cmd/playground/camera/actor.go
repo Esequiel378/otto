@@ -74,7 +74,7 @@ func (c *Camera) HandleInput(ctx *actor.Context, event input.EventInput) {
 	switch input := event.Context.(type) {
 	case *InputCamera:
 		// Update camera rotation with Euler angles
-		c.camera.Rotation = c.camera.Rotation.Add(mgl64.Vec2{input.GetPitch(), input.GetYaw()})
+		c.camera.Rotation = c.camera.Rotation.Add(input.Rotation())
 
 		// TODO: This should be sent to the physics system too
 
