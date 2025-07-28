@@ -49,10 +49,13 @@ func (c *Camera) Receive(ctx *actor.Context) {
 
 	switch msg := ctx.Message().(type) {
 	case actor.Initialized:
+		// Initialize InputCamera with default Euler angles (like reference code)
+		inputCamera := NewInputCamera(ctx.PID())
+
 		input.RegisterInputs(
 			ctx,
 			c.inputPID,
-			&InputCamera{PID: ctx.PID()},
+			inputCamera,
 		)
 		ctx.Send(c.rendererPID, renderer.EventUpdateCamera{
 			Camera: c.camera,
@@ -65,7 +68,8 @@ func (c *Camera) Receive(ctx *actor.Context) {
 			Camera: c.camera,
 		})
 	case physics.EventRigidBodyTransform:
-		c.camera.Rotation = mgl64.Vec2{msg.Rotation[0], msg.Rotation[1]}
+		c.camera.Rotation.Add(mgl64.Vec2{msg.Rotation.X(), msg.Rotation.Y()})
+		c.camera.Position = c.Entity.Position
 		ctx.Send(c.rendererPID, renderer.EventUpdateCamera{
 			Camera: c.camera,
 		})
@@ -75,14 +79,12 @@ func (c *Camera) Receive(ctx *actor.Context) {
 func (c *Camera) HandleInput(ctx *actor.Context, event input.EventInput) {
 	switch input := event.Context.(type) {
 	case *InputCamera:
-		ctx.Send(c.physicsPID, physics.EventRigidBodyUpdate{
-			PID: ctx.PID(),
-			// Convert 2D rotation (pitch, yaw) to 3D angular velocity
-			AngularVelocity: mgl64.Vec3{
-				input.Rotation[0],
-				input.Rotation[1],
-				0,
-			},
+		// Update camera rotation with Euler angles
+		c.camera.Rotation = c.camera.Rotation.Add(mgl64.Vec2{input.GetPitch(), input.GetYaw()})
+
+		// Send updated camera to renderer
+		ctx.Send(c.rendererPID, renderer.EventUpdateCamera{
+			Camera: c.camera,
 		})
 	}
 }
