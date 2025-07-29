@@ -80,12 +80,21 @@ func (p *Player) HandleInput(ctx *actor.Context, event input.EventInput) {
 		// Use camera vectors to transform velocity into world space
 		front := util.Vec3FrontVector(p.Entity.Rotation)
 		right := util.Vec3RightVector(p.Entity.Rotation)
-		up := util.Vec3UpVector(p.Entity.Rotation)
 
-		// Transform velocity from camera-relative to world coordinates
-		velocity := right.Mul(input.Velocity.X()).
-			Add(up.Mul(input.Velocity.Y())).
-			Add(front.Mul(input.Velocity.Z()))
+		// Create horizontal-only versions of front and right vectors (Y = 0)
+		frontHorizontal := mgl64.Vec3{front.X(), 0, front.Z()}.Normalize()
+		rightHorizontal := mgl64.Vec3{right.X(), 0, right.Z()}.Normalize()
+
+		// Transform horizontal movement (X and Z) using camera-relative vectors
+		horizontalVelocity := rightHorizontal.Mul(input.Velocity.X()).
+			Add(frontHorizontal.Mul(input.Velocity.Z()))
+
+		// Keep Y movement separate and direct (controlled by SPACE/SHIFT)
+		// Invert Y movement to fix the direction
+		verticalVelocity := mgl64.Vec3{0, -input.Velocity.Y(), 0}
+
+		// Combine horizontal and vertical movement
+		velocity := horizontalVelocity.Add(verticalVelocity)
 
 		ctx.Send(p.physicsPID, physics.EventRigidBodyUpdate{
 			PID:             ctx.PID(),
