@@ -168,15 +168,18 @@ func main() {
 		imgui.Text(fmt.Sprintf("Entities: %d", len(response.Entities)))
 		imgui.End()
 
-		// Render grid floor first (so it appears behind other entities)
-		otto.RenderGridFloor(shaderManager, modelManager, &response.Camera)
-
 		// Render entities using OpenGL batch rendering for better performance
-		entities := make([]*physics.EntityRigidBody, len(response.Entities))
+		var floor physics.EntityRigidBody
+		entities := make([]*physics.EntityRigidBody, 0, len(response.Entities))
 		for i := range response.Entities {
-			entities[i] = &response.Entities[i]
+			if response.Entities[i].ModelName == "plane" {
+				floor = response.Entities[i]
+				continue
+			}
+			entities = append(entities, &response.Entities[i])
 		}
 
+		otto.RenderGridFloor(shaderManager, modelManager, &floor, &response.Camera)
 		otto.RenderEntityBatch(shaderManager, modelManager, entities, &response.Camera)
 	})
 }

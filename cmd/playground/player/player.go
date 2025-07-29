@@ -3,6 +3,7 @@ package player
 import (
 	"otto"
 	"otto/cmd/playground/camera"
+	"otto/cmd/playground/floor"
 	"otto/system/input"
 	"otto/system/physics"
 	"otto/system/renderer"
@@ -14,10 +15,12 @@ import (
 
 type Player struct {
 	*otto.Entity
-	cameraPID   *actor.PID
 	rendererPID *actor.PID
 	physicsPID  *actor.PID
 	inputPID    *actor.PID
+
+	cameraPID *actor.PID
+	floorPID  *actor.PID
 }
 
 var _ actor.Receiver = (*Player)(nil)
@@ -37,6 +40,8 @@ func (p *Player) Receive(ctx *actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case actor.Initialized:
 		p.cameraPID = ctx.SpawnChild(camera.New(p.physicsPID, p.rendererPID, p.inputPID), "camera")
+		p.floorPID = ctx.SpawnChild(floor.New(p.rendererPID), "floor")
+
 		input.RegisterInputs(
 			ctx,
 			p.inputPID,
@@ -59,6 +64,10 @@ func (p *Player) Receive(ctx *actor.Context) {
 		p.Entity.Rotation = msg.Rotation
 	case physics.EventRigidBodyTransform:
 		ctx.Send(p.cameraPID, physics.EventPositionUpdate{
+			PID:      ctx.PID(),
+			Position: msg.Position,
+		})
+		ctx.Send(p.floorPID, physics.EventPositionUpdate{
 			PID:      ctx.PID(),
 			Position: msg.Position,
 		})
