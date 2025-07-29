@@ -46,7 +46,7 @@ func main() {
 					physicsPID,
 					rendererPID,
 					inputPID,
-					mgl64.Vec3{float64(i * 2), 0, float64(j * 2)}, // 2 units apart for 1 unit gap
+					mgl64.Vec3{float64(i * 2), 0.5, float64(j * 2)}, // 2 units apart for 1 unit gap, Y=1 to be above grid
 				),
 				fmt.Sprintf("cube_%d_%d", i, j),
 			)
@@ -167,6 +167,9 @@ func main() {
 		imgui.Text(fmt.Sprintf("Tick Rate: %d Hz", serverTickRate))
 		imgui.Text(fmt.Sprintf("Entities: %d", len(response.Entities)))
 		imgui.End()
+
+		// Render grid floor first (so it appears behind other entities)
+		otto.RenderGridFloor(shaderManager, modelManager, &response.Camera)
 
 		// Render entities using OpenGL batch rendering for better performance
 		entities := make([]*physics.EntityRigidBody, len(response.Entities))

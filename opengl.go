@@ -268,3 +268,149 @@ func RenderEntityBatch(shaderManager *manager.ShaderManager, modelManager *manag
 	// Unuse shader program
 	gl.UseProgram(0)
 }
+
+// RenderGridFloor renders a grid floor at Y=0 using line primitives
+func RenderGridFloor(shaderManager *manager.ShaderManager, modelManager *manager.ModelManager, camera *system.Camera) {
+	shaderProgram, err := shaderManager.Program("camera")
+	if err != nil {
+		log.Printf("Failed to get camera shader program: %v", err)
+		return
+	}
+
+	// Use shader program
+	gl.UseProgram(shaderProgram.PID)
+
+	// Set up view and projection matrices
+	cameraPos := util.Vec64ToVec32(camera.Position)
+	pitch := camera.Rotation.X()
+	yaw := camera.Rotation.Y()
+
+	cosPitch := float32(math.Cos(pitch))
+	sinPitch := float32(math.Sin(pitch))
+	cosYaw := float32(math.Cos(yaw))
+	sinYaw := float32(math.Sin(yaw))
+
+	forward := mgl32.Vec3{
+		cosPitch * sinYaw,
+		sinPitch,
+		cosPitch * cosYaw,
+	}
+
+	up := mgl32.Vec3{0, 1, 0}
+	target := cameraPos.Add(forward)
+	view := mgl32.LookAtV(cameraPos, target, up)
+
+	fov := float32(45.0 / camera.Zoom)
+	if fov < 5.0 {
+		fov = 5.0
+	}
+	if fov > 90.0 {
+		fov = 90.0
+	}
+	projection := mgl32.Perspective(mgl32.DegToRad(fov), 1200.0/900.0, 0.1, 10_000.0)
+
+	// Set uniform matrices
+	modelMatrix := mgl32.Ident4() // Identity matrix for grid
+	gl.UniformMatrix4fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("model\x00")), 1, false, &modelMatrix[0])
+	gl.UniformMatrix4fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("view\x00")), 1, false, &view[0])
+	gl.UniformMatrix4fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("projection\x00")), 1, false, &projection[0])
+
+	// Set lighting uniforms
+	gl.Uniform4f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("color\x00")), 0.8, 0.8, 0.8, 1.0) // Light gray grid
+	gl.Uniform3f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("viewPos\x00")), cameraPos.X(), cameraPos.Y(), cameraPos.Z())
+	gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("ambientStrength\x00")), 0.3)
+	gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("occlusionStrength\x00")), 1.0)
+	gl.Uniform1i(gl.GetUniformLocation(shaderProgram.PID, gl.Str("numLights\x00")), 1)
+
+	lightPos := mgl32.Vec3{1.0, 1.0, 1.0}
+	gl.Uniform3fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("lightPositions\x00")), 1, &lightPos[0])
+
+	lightColor := mgl32.Vec3{1.0, 1.0, 1.0}
+	gl.Uniform3fv(gl.GetUniformLocation(shaderProgram.PID, gl.Str("lightColors\x00")), 1, &lightColor[0])
+
+	lightIntensity := float32(2.0)
+	gl.Uniform1f(gl.GetUniformLocation(shaderProgram.PID, gl.Str("lightIntensities\x00")), lightIntensity)
+
+	// Create grid data
+	gridSize := float32(100.0) // Grid size in world units (100x100)
+	divisions := 100           // Number of grid lines (100 divisions for 1-unit cells)
+	step := gridSize / float32(divisions)
+	halfSize := gridSize / 2.0
+
+	var coordData []float32
+	var indices []uint32
+	vertexIndex := uint32(0)
+
+	// Create horizontal lines (along X-axis)
+	for i := 0; i <= divisions; i++ {
+		z := float32(-halfSize + float32(i)*step)
+
+		// Start point of line
+		coordData = append(coordData, float32(-halfSize), 0.0, z, 0.0, 0.0, 0.0, 1.0, 0.0) // position, texcoord, normal
+		indices = append(indices, vertexIndex)
+		vertexIndex++
+
+		// End point of line
+		coordData = append(coordData, float32(halfSize), 0.0, z, 1.0, 0.0, 0.0, 1.0, 0.0) // position, texcoord, normal
+		indices = append(indices, vertexIndex)
+		vertexIndex++
+	}
+
+	// Create vertical lines (along Z-axis)
+	for i := 0; i <= divisions; i++ {
+		x := float32(-halfSize + float32(i)*step)
+
+		// Start point of line
+		coordData = append(coordData, x, 0.0, float32(-halfSize), 0.0, 0.0, 0.0, 1.0, 0.0) // position, texcoord, normal
+		indices = append(indices, vertexIndex)
+		vertexIndex++
+
+		// End point of line
+		coordData = append(coordData, x, 0.0, float32(halfSize), 0.0, 1.0, 0.0, 1.0, 0.0) // position, texcoord, normal
+		indices = append(indices, vertexIndex)
+		vertexIndex++
+	}
+
+	// Create OpenGL buffers
+	var VAO, VBO, EBO uint32
+
+	gl.GenVertexArrays(1, &VAO)
+	gl.GenBuffers(1, &VBO)
+	gl.GenBuffers(1, &EBO)
+
+	gl.BindVertexArray(VAO)
+
+	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
+	gl.BufferData(gl.ARRAY_BUFFER, len(coordData)*4, gl.Ptr(coordData), gl.STATIC_DRAW)
+
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(indices)*4, gl.Ptr(indices), gl.STATIC_DRAW)
+
+	stride := int32(8 * 4) // 8 floats per vertex * 4 bytes per float
+
+	// Position attribute (location = 0)
+	gl.VertexAttribPointerWithOffset(0, 3, gl.FLOAT, false, stride, 0)
+	gl.EnableVertexAttribArray(0)
+
+	// Texture coordinate attribute (location = 1)
+	gl.VertexAttribPointerWithOffset(1, 2, gl.FLOAT, false, stride, uintptr(3*4))
+	gl.EnableVertexAttribArray(1)
+
+	// Normal attribute (location = 2)
+	gl.VertexAttribPointerWithOffset(2, 3, gl.FLOAT, false, stride, uintptr(5*4))
+	gl.EnableVertexAttribArray(2)
+
+	// Draw the grid using lines
+	gl.DrawElements(gl.LINES, int32(len(indices)), gl.UNSIGNED_INT, nil)
+
+	// Cleanup
+	gl.DeleteVertexArrays(1, &VAO)
+	gl.DeleteBuffers(1, &VBO)
+	gl.DeleteBuffers(1, &EBO)
+
+	// Unbind VAO
+	gl.BindVertexArray(0)
+
+	// Unuse shader program
+	gl.UseProgram(0)
+}
