@@ -76,7 +76,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	serverTickRate := 2048
+	serverTickRate := 256
 	clientTickRate := 1_000
 
 	go func(ctx context.Context) {
