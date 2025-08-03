@@ -8,6 +8,7 @@ import (
 	"otto/cmd/playground/cube"
 	"otto/cmd/playground/player"
 	"otto/manager"
+	"otto/monitoring"
 	"otto/system"
 	"otto/system/input"
 	"otto/system/physics"
@@ -29,6 +30,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create actor engine: %v", err)
 	}
+
+	// Initialize monitoring
+	metricsManager := monitoring.NewMetricsManager()
+	if err := metricsManager.Start(); err != nil {
+		log.Printf("Warning: failed to start metrics server: %v", err)
+	}
+	defer metricsManager.Stop()
 
 	inputPID := e.Spawn(input.New(), "input")
 	rendererPID := e.Spawn(renderer.New(), "renderer")
@@ -95,6 +103,9 @@ func main() {
 				deltaTime := now.Sub(latestTick).Seconds()
 				latestTick = now
 				e.BroadcastEvent(system.ServerTick{DeltaTime: deltaTime})
+
+				// Update metrics for physics calculations
+				metricsManager.IncrementPhysicsCalculations()
 			}
 		}
 	}(ctx)
@@ -114,6 +125,9 @@ func main() {
 				latestTick = now
 				// TODO: Maybe we should broadcast this instead of sending it to the input PID?
 				e.Send(inputPID, system.ClientTick{DeltaTime: deltaTime})
+
+				// Update metrics for input events
+				metricsManager.IncrementInputEvents()
 			}
 		}
 	}(ctx)
@@ -123,6 +137,10 @@ func main() {
 	var currentFPS float64
 	var frameTimes []float64
 	maxFrameTimes := 60 // Keep last 60 frame times for averaging
+
+	// Memory stats tracking
+	var lastMemoryUpdate time.Time
+	memoryUpdateInterval := 5 * time.Second
 
 	window.Run(func(deltaTime float64) {
 		// Track frame time for FPS calculation
@@ -141,8 +159,24 @@ func main() {
 				}
 				averageFrameTime := totalTime / float64(len(frameTimes))
 				currentFPS = 1.0 / averageFrameTime
+
+				// Update FPS metric
+				metricsManager.UpdateFPS(currentFPS)
 			}
 			lastFPSUpdate = now
+		}
+
+		// Update memory stats every 5 seconds
+		if now.Sub(lastMemoryUpdate) >= memoryUpdateInterval {
+			var memStats runtime.MemStats
+			runtime.ReadMemStats(&memStats)
+			metricsManager.UpdateMemoryUsage(
+				memStats.HeapAlloc,
+				memStats.HeapSys,
+				memStats.HeapIdle,
+				memStats.HeapInuse,
+			)
+			lastMemoryUpdate = now
 		}
 
 		// Request entities from renderer
@@ -160,12 +194,22 @@ func main() {
 			return
 		}
 
+		// Update entity count metric
+		metricsManager.UpdateEntityCount(len(response.Entities))
+
 		// Render FPS overlay
 		imgui.Begin("Performance")
 		imgui.Text(fmt.Sprintf("FPS: %.1f", currentFPS))
 		imgui.Text(fmt.Sprintf("Frame Time: %.3f ms", deltaTime*1000))
 		imgui.Text(fmt.Sprintf("Tick Rate: %d Hz", serverTickRate))
 		imgui.Text(fmt.Sprintf("Entities: %d", len(response.Entities)))
+		if metricsManager.IsEnabled() {
+			imgui.Text("Metrics: ENABLED")
+			imgui.Text("Metrics endpoint: http://localhost:8080/metrics")
+		} else {
+			imgui.Text("Metrics: DISABLED")
+			imgui.Text("Set OTTO_METRICS_ENABLED=true to enable")
+		}
 		imgui.End()
 
 		// Render entities using OpenGL batch rendering for better performance
@@ -179,7 +223,17 @@ func main() {
 			entities = append(entities, &response.Entities[i])
 		}
 
+		// Record frame time for metrics
+		frameStart := time.Now()
+
 		otto.RenderGridFloor(shaderManager, modelManager, &floor, &response.Camera)
 		otto.RenderEntityBatch(shaderManager, modelManager, entities, &response.Camera)
+
+		// Update render calls metric
+		metricsManager.IncrementRenderCalls()
+
+		// Record frame time
+		frameDuration := time.Since(frameStart)
+		metricsManager.RecordFrameTime(frameDuration)
 	})
 }

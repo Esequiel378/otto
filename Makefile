@@ -67,7 +67,16 @@ build-current: $(BUILD_DIR)
 .PHONY: run
 run:
 	@echo "Running application..."
-	go run ./main.go
+	go run ./cmd/playground/main.go
+
+# Run the application
+.PHONY: run
+run:
+	@echo "Running application with metrics enabled..."
+	@echo "Metrics will be available at http://localhost:8080/metrics"
+	@echo "Grafana dashboard: http://localhost:3000 (admin/admin)"
+	@echo "Prometheus: http://localhost:9090"
+	OTTO_METRICS_ENABLED=true go run ./cmd/playground/main.go
 
 # Clean build artifacts
 .PHONY: clean
@@ -132,6 +141,29 @@ dev-build: $(BUILD_DIR)
 	@echo "Building development version..."
 	CGO_ENABLED=$(CGO_ENABLED) go build -race -gcflags="all=-N -l" -o $(BUILD_DIR)/$(PROJECT_NAME)-dev .
 
+# Monitoring commands
+.PHONY: monitor-start
+monitor-start:
+	@echo "Starting Prometheus and Grafana monitoring stack..."
+	@echo "Grafana: http://localhost:3000 (admin/admin)"
+	@echo "Prometheus: http://localhost:9090"
+	docker-compose up -d
+
+.PHONY: monitor-stop
+monitor-stop:
+	@echo "Stopping monitoring stack..."
+	docker-compose down
+
+.PHONY: monitor-logs
+monitor-logs:
+	@echo "Showing monitoring stack logs..."
+	docker-compose logs -f
+
+.PHONY: monitor-status
+monitor-status:
+	@echo "Monitoring stack status:"
+	docker-compose ps
+
 # Show help
 .PHONY: help
 help:
@@ -153,4 +185,8 @@ help:
 	@echo "  release-windows - Create Windows release package"
 	@echo "  release         - Create release packages for all platforms"
 	@echo "  dev-build       - Build with debug information"
+	@echo "  monitor-start   - Start Prometheus and Grafana monitoring stack"
+	@echo "  monitor-stop    - Stop Prometheus and Grafana monitoring stack"
+	@echo "  monitor-logs    - Show monitoring stack logs"
+	@echo "  monitor-status  - Show monitoring stack status"
 	@echo "  help            - Show this help message" 
