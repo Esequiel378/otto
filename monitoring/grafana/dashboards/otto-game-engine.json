@@ -107,6 +107,7 @@
         }
       ],
       "title": "FPS (Frames Per Second)",
+      "description": "Shows the current frames per second of the game engine. Higher FPS indicates smoother gameplay. This metric helps identify performance bottlenecks and ensure the game runs at acceptable frame rates.",
       "type": "timeseries"
     },
     {
@@ -194,6 +195,7 @@
         }
       ],
       "title": "Entity Count",
+      "description": "Displays the total number of entities (game objects) currently active in the game world. This includes players, cubes, and other game objects. Monitoring this helps understand the complexity of the game scene and potential performance impact.",
       "type": "timeseries"
     },
     {
@@ -291,6 +293,7 @@
         }
       ],
       "title": "Memory Usage",
+      "description": "Tracks the memory consumption of the game engine. 'Heap Alloc' shows currently allocated heap memory, while 'Heap Sys' shows the total heap memory reserved by the system. This helps identify memory leaks and optimize resource usage.",
       "type": "timeseries"
     },
     {
@@ -397,6 +400,7 @@
         }
       ],
       "title": "Performance Metrics (Rate)",
+      "description": "Shows the rate of various performance-critical operations per second. 'Render Calls/sec' indicates how many rendering operations are performed, 'Input Events/sec' shows user input processing rate, and 'Physics Calculations/sec' tracks physics simulation intensity. These metrics help identify performance bottlenecks.",
       "type": "timeseries"
     },
     {
@@ -494,6 +498,140 @@
         }
       ],
       "title": "Frame Time Distribution",
+      "description": "Displays the time taken to process each frame in seconds. The 95th percentile shows the worst-case frame times, while the 50th percentile shows typical performance. Lower values indicate better performance. This helps identify frame drops and performance spikes.",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "otto_actor_count",
+          "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(otto_actor_messages_total{actor_name=\"input\"}[5m]))",
+          "legendFormat": "input",
+          "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(otto_actor_messages_total{actor_name=\"renderer\"}[5m]))",
+          "legendFormat": "renderer",
+          "refId": "C"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(otto_actor_messages_total{actor_name=\"physics\"}[5m]))",
+          "legendFormat": "physics",
+          "refId": "D"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(otto_actor_messages_total{actor_name=\"player\"}[5m]))",
+          "legendFormat": "player",
+          "refId": "E"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "expr": "sum(rate(otto_actor_messages_total{actor_name=\"cube\"}[5m]))",
+          "legendFormat": "cube",
+          "refId": "F"
+        }
+      ],
+      "title": "Actor System Metrics",
+      "description": "Shows the message processing rate for each actor type in the game engine's actor system. Each line represents how many messages per second each actor (input, renderer, physics, player) is processing. Higher rates indicate more active actors, while sudden drops might indicate bottlenecks or actor failures.",
       "type": "timeseries"
     }
   ],

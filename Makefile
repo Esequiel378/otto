@@ -63,13 +63,7 @@ build-current: $(BUILD_DIR)
 	@echo "Building for current platform..."
 	CGO_ENABLED=$(CGO_ENABLED) go build $(LDFLAGS) -o $(BUILD_DIR)/$(PROJECT_NAME) .
 
-# Run the application (current platform)
-.PHONY: run
-run:
-	@echo "Running application..."
-	go run ./cmd/playground/main.go
-
-# Run the application
+# Run the application with metrics enabled
 .PHONY: run
 run:
 	@echo "Running application with metrics enabled..."

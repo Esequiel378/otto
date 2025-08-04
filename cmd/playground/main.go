@@ -38,11 +38,14 @@ func main() {
 	}
 	defer metricsManager.Stop()
 
-	inputPID := e.Spawn(input.New(), "input")
-	rendererPID := e.Spawn(renderer.New(), "renderer")
-	physicsPID := e.Spawn(physics.New(), "physics")
+	// Initialize actor tracker to automatically track all actors
+	actorTracker := monitoring.NewActorTracker()
 
-	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player")
+	inputPID := e.Spawn(input.New(), "input", actor.WithMiddleware(actorTracker.WithActorTracking("input")))
+	rendererPID := e.Spawn(renderer.New(), "renderer", actor.WithMiddleware(actorTracker.WithActorTracking("renderer")))
+	physicsPID := e.Spawn(physics.New(), "physics", actor.WithMiddleware(actorTracker.WithActorTracking("physics")))
+
+	e.Spawn(player.NewPlayer(physicsPID, rendererPID, inputPID), "player", actor.WithMiddleware(actorTracker.WithActorTracking("player")))
 
 	// Spawn 100 cubes in a 10x10 grid with a gap of 1 cube between them
 	// Each cube is 1 unit, so we place them 2 units apart (1 unit for cube + 1 unit gap)
@@ -57,6 +60,7 @@ func main() {
 					mgl64.Vec3{float64(i * 2), 0.5, float64(j * 2)}, // 2 units apart for 1 unit gap, Y=1 to be above grid
 				),
 				fmt.Sprintf("cube_%d_%d", i, j),
+				actor.WithMiddleware(actorTracker.WithActorTracking("cube")),
 			)
 		}
 	}
@@ -197,6 +201,10 @@ func main() {
 		// Update entity count metric
 		metricsManager.UpdateEntityCount(len(response.Entities))
 
+		// Update actor count metric from ActorTracker
+		actorCount := actorTracker.GetActorCount()
+		metricsManager.UpdateActorCount(actorCount)
+
 		// Render FPS overlay
 		imgui.Begin("Performance")
 		imgui.Text(fmt.Sprintf("FPS: %.1f", currentFPS))
@@ -205,7 +213,7 @@ func main() {
 		imgui.Text(fmt.Sprintf("Entities: %d", len(response.Entities)))
 		if metricsManager.IsEnabled() {
 			imgui.Text("Metrics: ENABLED")
-			imgui.Text("Metrics endpoint: http://localhost:8080/metrics")
+			imgui.Text("Dashboard: http://localhost:3000 (admin/admin)")
 		} else {
 			imgui.Text("Metrics: DISABLED")
 			imgui.Text("Set OTTO_METRICS_ENABLED=true to enable")

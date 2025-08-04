@@ -47,6 +47,11 @@ var (
 		Help: "Memory usage in bytes",
 	}, []string{"type"})
 
+	actorCountGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "otto_actor_count",
+		Help: "Total number of actors in the system",
+	})
+
 	// Metrics registry
 	registry = prometheus.NewRegistry()
 )
@@ -70,6 +75,7 @@ func NewMetricsManager() *MetricsManager {
 		registry.MustRegister(physicsCalculationsCounter)
 		registry.MustRegister(frameTimeHistogram)
 		registry.MustRegister(memoryUsageGauge)
+		registry.MustRegister(actorCountGauge)
 
 		// Register default Go metrics
 		registry.MustRegister(prometheus.NewGoCollector())
@@ -166,5 +172,12 @@ func (m *MetricsManager) UpdateMemoryUsage(heapAlloc, heapSys, heapIdle, heapInu
 		memoryUsageGauge.WithLabelValues("heap_sys").Set(float64(heapSys))
 		memoryUsageGauge.WithLabelValues("heap_idle").Set(float64(heapIdle))
 		memoryUsageGauge.WithLabelValues("heap_inuse").Set(float64(heapInuse))
+	}
+}
+
+// UpdateActorCount updates the actor count metric
+func (m *MetricsManager) UpdateActorCount(count int) {
+	if m.enabled {
+		actorCountGauge.Set(float64(count))
 	}
 }
