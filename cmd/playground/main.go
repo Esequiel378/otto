@@ -184,7 +184,7 @@ func main() {
 		}
 
 		// Request entities from renderer
-		resp := e.Request(rendererPID, renderer.RequestEntities{}, 10*time.Millisecond)
+		resp := e.Request(rendererPID, renderer.RequestEntities{}, 20*time.Millisecond)
 
 		res, err := resp.Result()
 		if err != nil {
@@ -213,7 +213,7 @@ func main() {
 		imgui.Text(fmt.Sprintf("Entities: %d", len(response.Entities)))
 		if metricsManager.IsEnabled() {
 			imgui.Text("Metrics: ENABLED")
-			imgui.Text("Dashboard: http://localhost:3000 (admin/admin)")
+			imgui.Text("Dashboard: http://localhost:3030 (admin/admin)")
 		} else {
 			imgui.Text("Metrics: DISABLED")
 			imgui.Text("Set OTTO_METRICS_ENABLED=true to enable")

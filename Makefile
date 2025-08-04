@@ -68,7 +68,7 @@ build-current: $(BUILD_DIR)
 run:
 	@echo "Running application with metrics enabled..."
 	@echo "Metrics will be available at http://localhost:8080/metrics"
-	@echo "Grafana dashboard: http://localhost:3000 (admin/admin)"
+	@echo "Grafana dashboard: http://localhost:3030 (admin/admin)"
 	@echo "Prometheus: http://localhost:9090"
 	OTTO_METRICS_ENABLED=true go run ./cmd/playground/main.go
 
