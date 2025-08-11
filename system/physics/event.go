@@ -27,3 +27,8 @@ type EventRotationUpdate struct {
 	PID      *actor.PID
 	Rotation mgl64.Vec3
 }
+
+type EventGroundState struct {
+	PID        *actor.PID
+	IsOnGround bool
+}

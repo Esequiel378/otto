@@ -21,6 +21,10 @@ type Player struct {
 
 	cameraPID *actor.PID
 	floorPID  *actor.PID
+
+	// Jump system
+	isOnGround bool
+	canJump    bool
 }
 
 var _ actor.Receiver = (*Player)(nil)
@@ -39,8 +43,11 @@ func NewPlayer(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 func (p *Player) Receive(ctx *actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case actor.Initialized:
+		// Set the player entity type
+		p.Entity.EntityType = "player"
+
 		p.cameraPID = ctx.SpawnChild(camera.New(p.physicsPID, p.rendererPID, p.inputPID), "camera")
-		p.floorPID = ctx.SpawnChild(floor.New(p.rendererPID), "floor")
+		p.floorPID = ctx.SpawnChild(floor.New(p.rendererPID, p.physicsPID), "floor")
 
 		input.RegisterInputs(
 			ctx,
@@ -67,10 +74,16 @@ func (p *Player) Receive(ctx *actor.Context) {
 			PID:      ctx.PID(),
 			Position: msg.Position,
 		})
-		ctx.Send(p.floorPID, physics.EventPositionUpdate{
-			PID:      ctx.PID(),
-			Position: msg.Position,
-		})
+		// TODO: The floor should no longer be a child of the player (no need for movement anymore)
+		// ctx.Send(p.floorPID, physics.EventPositionUpdate{
+		// 	PID:      ctx.PID(),
+		// 	Position: msg.Position,
+		// })
+	case physics.EventGroundState:
+		p.isOnGround = msg.IsOnGround
+		if p.isOnGround {
+			p.canJump = true // Reset jump ability when on ground
+		}
 	}
 }
 
@@ -89,9 +102,19 @@ func (p *Player) HandleInput(ctx *actor.Context, event input.EventInput) {
 		horizontalVelocity := rightHorizontal.Mul(input.Velocity.X()).
 			Add(frontHorizontal.Mul(input.Velocity.Z()))
 
-		// Keep Y movement separate and direct (controlled by SPACE/SHIFT)
-		// Invert Y movement to fix the direction
-		verticalVelocity := mgl64.Vec3{0, -input.Velocity.Y(), 0}
+		// Handle jumping (SPACE key)
+		var verticalVelocity mgl64.Vec3
+		if input.Velocity.Y() < 0 && p.canJump && p.isOnGround {
+			jumpForce := 1.0
+			verticalVelocity = mgl64.Vec3{0, jumpForce, 0}
+			p.canJump = false // Prevent multiple jumps
+		} else if input.Velocity.Y() > 0 {
+			// SHIFT key pressed (Y=1) - ignore it to prevent flying
+			// Don't add any vertical velocity
+		} else if input.Velocity.Y() == 0 {
+			// Reset jump ability when SPACE is released
+			p.canJump = true
+		}
 
 		// Combine horizontal and vertical movement
 		velocity := horizontalVelocity.Add(verticalVelocity)

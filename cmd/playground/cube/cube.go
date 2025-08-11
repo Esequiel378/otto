@@ -17,6 +17,7 @@ func NewCube(physicsPID, rendererPID, inputPID *actor.PID) actor.Producer {
 	return func() actor.Receiver {
 		entity := otto.NewEntity(physicsPID, rendererPID, inputPID)
 		entity.ModelName = "cube"
+		entity.EntityType = "cube"
 		entity.Position = mgl64.Vec3{0, 0, 2} // Position the cube in front of the camera
 		return &Cube{Entity: entity}
 	}
@@ -26,6 +27,7 @@ func NewCubeWithPosition(physicsPID, rendererPID, inputPID *actor.PID, position 
 	return func() actor.Receiver {
 		entity := otto.NewEntity(physicsPID, rendererPID, inputPID)
 		entity.ModelName = "cube"
+		entity.EntityType = "cube"
 		entity.Position = position
 		entity.Scale = mgl64.Vec3{1, 1, 1}
 		return &Cube{Entity: entity}

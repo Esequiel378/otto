@@ -9,4 +9,5 @@ type EntityRigidBody struct {
 	Rotation        mgl64.Vec3
 	AngularVelocity mgl64.Vec3
 	ModelName       string
+	EntityType      string // "player", "cube", "floor", etc.
 }

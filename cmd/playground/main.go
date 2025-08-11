@@ -57,7 +57,7 @@ func main() {
 					physicsPID,
 					rendererPID,
 					inputPID,
-					mgl64.Vec3{float64(i * 2), 0.5, float64(j * 2)}, // 2 units apart for 1 unit gap, Y=1 to be above grid
+					mgl64.Vec3{float64(i * 2), 5.0, float64(j * 2)}, // 2 units apart for 1 unit gap, Y=5 to demonstrate gravity with corrected collision
 				),
 				fmt.Sprintf("cube_%d_%d", i, j),
 				actor.WithMiddleware(actorTracker.WithActorTracking("cube")),
@@ -184,7 +184,7 @@ func main() {
 		}
 
 		// Request entities from renderer
-		resp := e.Request(rendererPID, renderer.RequestEntities{}, 20*time.Millisecond)
+		resp := e.Request(rendererPID, renderer.RequestEntities{}, 50*time.Millisecond)
 
 		res, err := resp.Result()
 		if err != nil {

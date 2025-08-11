@@ -9,11 +9,12 @@ import (
 )
 
 type Entity struct {
-	Position  mgl64.Vec3
-	Velocity  mgl64.Vec3
-	Scale     mgl64.Vec3
-	Rotation  mgl64.Vec3
-	ModelName string
+	Position   mgl64.Vec3
+	Velocity   mgl64.Vec3
+	Scale      mgl64.Vec3
+	Rotation   mgl64.Vec3
+	ModelName  string
+	EntityType string // "player", "cube", "floor", etc.
 
 	physicsPID  *actor.PID
 	rendererPID *actor.PID
@@ -61,11 +62,12 @@ func (e *Entity) Receive(ctx *actor.Context) {
 
 func (e *Entity) ToRigidBody() physics.EntityRigidBody {
 	return physics.EntityRigidBody{
-		Position:  e.Position,
-		Velocity:  e.Velocity,
-		Scale:     e.Scale,
-		Rotation:  e.Rotation,
-		ModelName: e.ModelName,
+		Position:   e.Position,
+		Velocity:   e.Velocity,
+		Scale:      e.Scale,
+		Rotation:   e.Rotation,
+		ModelName:  e.ModelName,
+		EntityType: e.EntityType,
 	}
 }
 
